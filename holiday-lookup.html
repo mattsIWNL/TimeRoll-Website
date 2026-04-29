@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holiday Lookup - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand-name" style="color: white; text-decoration: none;">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                        <a href="#">Overbreak Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                            <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                            <div class="dropdown-content">
+                                <a href="change-process-date.html">Change Process Date</a>
+                                <a href="convert-logs.html">Convert Logs</a>
+                                <a href="upload.html">Upload</a>
+                                <a href="generate.html">Generate</a>
+                                <a href="view-dtr.html">View DTR</a>
+                            </div>
+                        </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="content-header">
+            <h2>Holiday Lookup</h2>
+            <button class="btn-add" id="openHolidayModal"><i class="fas fa-plus"></i> Add Holiday</button>
+        </div>
+
+        <!-- SEARCH BAR -->
+        <div class="card search-card">
+            <div class="form-group-inline">
+                <i class="fas fa-search" style="color: #888;"></i>
+                <input type="text" id="holidaySearch" placeholder="Search for holiday name or classification...">
+            </div>
+        </div>
+
+        <!-- HOLIDAY TABLE -->
+        <div class="card">
+            <table class="employee-table" id="holidayTable">
+                <thead>
+                    <tr>
+                        <th>Holiday Name</th>
+                        <th>Date</th>
+                        <th>Classification</th>
+                        <th style="text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>New Year's Day</td>
+                        <td>January 1</td>
+                        <td><span class="badge shift-morning">Regular Holiday</span></td>
+                        <td style="text-align: center;">
+                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Mauyndy Thursday</td>
+                        <td>April 17</td>
+                        <td><span class="badge shift-morning">Regular Holiday</span></td>
+                        <td style="text-align: center;">
+                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Ninoy Aquino Day</td>
+                        <td>August 21</td>
+                        <td><span class="badge shift-afternoon">Special Non-Working</span></td>
+                        <td style="text-align: center;">
+                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Christmas Day</td>
+                        <td>December 25</td>
+                        <td><span class="badge shift-morning">Regular Holiday</span></td>
+                        <td style="text-align: center;">
+                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- HIDDEN ADD/EDIT FORM (Simple toggle) -->
+    <div id="holidayFormContainer" class="card" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1001; width: 400px; border: 2px solid var(--primary-blue);">
+        <h3>Add/Edit Holiday</h3>
+        <hr>
+        <div class="form-group">
+            <label>Holiday Name</label>
+            <input type="text" id="hName">
+        </div>
+        <div class="form-group">
+            <label>Date</label>
+            <input type="text" id="hDate" placeholder="e.g. June 12">
+        </div>
+        <div class="form-group">
+            <label>Classification</label>
+            <select id="hClass" class="config-input">
+                <option value="Regular Holiday">Regular Holiday</option>
+                <option value="Special Non-Working">Special Non-Working</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn check-out" id="saveHoliday">Save</button>
+            <button class="btn-secondary" id="closeHolidayForm">Cancel</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

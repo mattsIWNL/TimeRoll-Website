@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeRoll™️ - Par Excellence Search Consulting Inc.</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for the User Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <span class="brand-name">TimeRoll™️</span>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <!-- Dropdown for System -->
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                
+                <!-- Dropdown for Report -->
+                    <li class="dropdown">
+                        <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                        <div class="dropdown-content">
+                            <a href="#">Timekeeping Analytics</a>
+                            <a href="#">DTR Report</a>
+                            <a href="#">Overbreak Report</a>
+                        </div>
+                    </li>
+
+                    <!-- Dropdown for Transaction -->
+                    <li class="dropdown">
+                            <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                            <div class="dropdown-content">
+                                <a href="change-process-date.html">Change Process Date</a>
+                                <a href="convert-logs.html">Convert Logs</a>
+                                <a href="upload.html">Upload</a>
+                                <a href="generate.html">Generate</a>
+                                <a href="view-dtr.html">View DTR</a>
+                            </div>
+                        </li>
+                    <li><a href="#" class="exit-btn">Exit</a></li>
+                </ul>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD MAIN CONTENT -->
+    <main class="dashboard-container">
+        
+        <!-- Row 1: Time and Quick Actions -->
+        <div class="top-row">
+            <!-- Philippine Standard Time Display -->
+            <div class="card time-card">
+                <h3>System Status</h3>
+                <div id="clock">--:--:--</div>
+                <div id="date">Loading date...</div>
+                
+                <div class="status-indicators" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                    <p><strong>Timezone:</strong> <span id="homeTimezoneDisplay">Philippine Standard Time</span></p>
+                </div>
+            </div>
+
+            <!-- Quick Check-in/Out -->
+            <div class="card action-card">
+                <h3>Attendance Action</h3>
+                <p>Status: <span id="status">Out</span></p>
+                <div class="action-buttons">
+                    <button class="btn check-in">Check In</button>
+                    <button class="btn check-out">Check Out</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Employee List -->
+        <div class="bottom-row">
+            <div class="card list-card">
+                <h3>Employees Currently Checked In</h3>
+                <table class="employee-table">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Department</th>
+                            <th>Check-in Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Dela Cruz, Juan</td>
+                            <td>Recruitment</td>
+                            <td>08:02 AM</td>
+                        </tr>
+                        <tr>
+                            <td>Santos, Maria</td>
+                            <td>HR Operations</td>
+                            <td>08:15 AM</td>
+                        </tr>
+                        <tr>
+                            <td>Reyes, Ricardo</td>
+                            <td>Executive Search</td>
+                            <td>08:45 AM</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

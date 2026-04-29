@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Records - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand-name" style="color: white; text-decoration: none;">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="change-process-date.html">Change Process Date</a>
+                        <a href="convert-logs.html">Convert Logs</a>
+                        <a href="upload.html">Upload</a>
+                        <a href="generate.html">Generate</a>
+                        <a href="view-dtr.html">View DTR</a>
+                    </div>
+                </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="employee-layout">
+        <!-- SIDEBAR NAVBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Generation Menu</h3>
+            </div>
+            <ul class="sidebar-links" id="generate-sidebar">
+                <li class="active"><a href="#"><i class="fas fa-file-export"></i> Generate for Approval (Excel)</a></li>
+                <li><a href="#"><i class="fas fa-money-check-alt"></i> Generate DTR for Payroll</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="employee-content">
+            
+            <!-- SECTION 1: GENERATE FOR APPROVAL -->
+            <section id="approval-gen-view">
+                <div class="content-header">
+                    <h2>Generate for Approval (Excel)</h2>
+                </div>
+                <div class="card">
+                    <h3>Review Logs</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Compiles converted logs into a draft Excel file for supervisor review and approval.
+                    </p>
+                    <div class="form-group" style="max-width: 300px;">
+                        <label>Target Period</label>
+                        <select class="config-input">
+                            <option>Current Process Month</option>
+                            <option>1st Quincena (1st - 15th)</option>
+                            <option>2nd Quincena (16th - End)</option>
+                        </select>
+                    </div>
+                    <button class="btn check-out" style="margin-top: 10px; width: auto; padding: 12px 30px;" onclick="simulateGeneration('approval')">
+                        <i class="fas fa-cogs"></i> Start Generation
+                    </button>
+                    <div id="approvalMessage" class="success-message">Excel file generated and ready for download!</div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: GENERATE DTR FOR PAYROLL -->
+            <section id="payroll-gen-view" style="display: none;">
+                <div class="content-header">
+                    <h2>Generate DTR for Payroll</h2>
+                </div>
+                <div class="card">
+                    <h3>Final DTR Generation</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Generates the final DTR summary compatible with the payroll system for salary calculation.
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" class="config-input">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" class="config-input">
+                        </div>
+                    </div>
+                    <button class="btn check-out" style="margin-top: 10px; width: auto; padding: 12px 30px;" onclick="simulateGeneration('payroll')">
+                        <i class="fas fa-file-invoice-dollar"></i> Generate Payroll DTR
+                    </button>
+                    <div id="payrollMessage" class="success-message">Final DTRs processed and archived!</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

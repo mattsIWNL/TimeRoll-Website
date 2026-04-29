@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000042;">
+
+    <div class="card" style="width: 350px; text-align: center; padding: 40px;">
+        <h2 style="color: #000042; margin-bottom: 10px;">TimeRoll™️</h2>
+        <p style="font-size: 0.8rem; color: #666; margin-bottom: 30px;">Par Excellence Search Consulting Inc.</p>
+        
+        <div class="form-group" style="text-align: left;">
+            <label>Username</label>
+            <input type="text" id="loginUser" placeholder="Enter username">
+        </div>
+        <div class="form-group" style="text-align: left;">
+            <label>Password</label>
+            <input type="password" id="loginPass" placeholder="Enter password">
+        </div>
+
+        <button id="btnLogin" class="btn check-out" style="width: 100%; margin-top: 20px; padding: 15px;">Login</button>
+        <p id="loginError" style="color: red; display: none; margin-top: 15px; font-size: 0.9rem;">Invalid credentials.</p>
+    </div>
+
+    <script>
+        // Simple Login Logic
+        document.getElementById('btnLogin').addEventListener('click', () => {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+
+            // For demo: User is 'admin' and Pass is '123'
+            if (user === 'admin' && pass === '123') {
+                localStorage.setItem('isLoggedIn', 'true');
+                window.location.href = 'index.html';
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View DTR - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR (Consistent with previous pages) -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand-name" style="color: white; text-decoration: none;">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="change-process-date.html">Change Process Date</a>
+                        <a href="convert-logs.html">Convert Logs</a>
+                        <a href="upload.html">Upload</a>
+                        <a href="generate.html">Generate</a>
+                        <a href="view-dtr.html">View DTR</a>
+                    </div>
+                </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="content-header">
+            <h2>View Daily Time Record (DTR)</h2>
+        </div>
+
+        <!-- SEARCH SECTION -->
+        <div class="card search-card">
+            <div class="form-group-inline">
+                <label>Employee ID/Name:</label>
+                <input type="text" id="dtrSearchInput" placeholder="Enter ID (e.g., 2024-001)">
+                <button class="btn-search" id="btnSearchDTR"><i class="fas fa-search"></i> View Records</button>
+            </div>
+        </div>
+
+        <!-- SUMMARY STATISTICS ROW -->
+        <div id="dtrResults" style="display: none;">
+            <div class="stats-grid">
+                <div class="card stat-box">
+                    <span class="stat-label">Total Hours Worked</span>
+                    <span class="stat-value" id="statHours">0.00</span>
+                </div>
+                <div class="card stat-box">
+                    <span class="stat-label">Overtime (Mins)</span>
+                    <span class="stat-value" id="statOT" style="color: #28a745;">0</span>
+                </div>
+                <div class="card stat-box">
+                    <span class="stat-label">Late (Mins)</span>
+                    <span class="stat-value" id="statLate" style="color: #dc3545;">0</span>
+                </div>
+                <div class="card stat-box">
+                    <span class="stat-label">Days Present</span>
+                    <span class="stat-value" id="statPresent">0</span>
+                </div>
+                <div class="card stat-box">
+                    <span class="stat-label">Days Absent</span>
+                    <span class="stat-value" id="statAbsent">0</span>
+                </div>
+            </div>
+
+            <!-- DTR TABLE -->
+            <div class="card" style="margin-top: 20px;">
+                <h3>Detailed Log: <span id="displayEmployeeName">Employee Name</span></h3>
+                <table class="employee-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Late (m)</th>
+                            <th>OT (m)</th>
+                            <th>Total Hrs</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dtrTableBody">
+                        <!-- Data will be injected here by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

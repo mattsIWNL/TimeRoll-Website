@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Management - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" style="color: white; text-decoration: none;" class="brand-name">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                        <a href="#">Overbreak Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="change-process-date.html">Change Process Date</a>
+                        <a href="convert-logs.html">Convert Logs</a>
+                        <a href="upload.html">Upload</a>
+                        <a href="generate.html">Generate</a>
+                        <a href="view-dtr.html">View DTR</a>
+                    </div>
+                </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="employee-layout">
+        <!-- SIDEBAR NAVBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Schedule Settings</h3>
+            </div>
+            <ul class="sidebar-links" id="schedule-sidebar">
+                <li class="active"><a href="#"><i class="fas fa-clock"></i> List of Shifts</a></li>
+                <li><a href="#"><i class="fas fa-mug-hot"></i> Assigned Break Times</a></li>
+                <li><a href="#"><i class="fas fa-upload"></i> Schedule Upload</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="employee-content">
+            
+            <!-- SECTION 1: LIST OF SHIFTS -->
+            <section id="shifts-view">
+                <div class="content-header">
+                    <h2>List of Shifts</h2>
+                    <button class="btn-add">+ Create New Shift</button>
+                </div>
+                
+                <div class="card">
+                    <table class="employee-table">
+                        <thead>
+                            <tr>
+                                <th>Shift Name</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Total Hours</th>
+                                <th>Assigned Employees</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge shift-morning">Morning Shift</span></td>
+                                 <td>08:00 AM</td>
+                                <td>05:00 PM</td>
+                                <td>9.0 (1 hr break)</td>
+                                <td><strong>15</strong> Employees</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge shift-afternoon">Afternoon Shift</span></td>
+                                <td>01:00 PM</td>
+                                <td>10:00 PM</td>
+                                <td>9.0 (1 hr break)</td>
+                                <td><strong>10</strong> Employees</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge shift-night">Night Shift</span></td>
+                                <td>10:00 PM</td>
+                                <td>07:00 AM</td>
+                                <td>9.0 (1 hr break)</td>
+                                <td><strong>5</strong> Employees</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECTION 2: BREAK TIMES (Hidden) -->
+            <section id="breaks-view" style="display: none;">
+    <div class="content-header">
+        <h2>Assigned Break Times</h2>
+        <p style="color: #666; margin-top: -15px;">Designated rest periods per shift assignment.</p>
+    </div>
+
+    <div class="card">
+        <table class="employee-table">
+            <thead>
+                <tr>
+                    <th>Shift Name</th>
+                    <th>Break Start</th>
+                    <th>Break End</th>
+                    <th>Duration</th>
+                    <th>Auto-Deduct</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge shift-morning">Morning Shift</span></td>
+                    <td>12:00 PM</td>
+                    <td>01:00 PM</td>
+                    <td>60 Minutes</td>
+                    <td><span class="status-pill">Yes</span></td>
+                </tr>
+                <tr>
+                    <td><span class="badge shift-afternoon">Afternoon Shift</span></td>
+                    <td>05:00 PM</td>
+                    <td>06:00 PM</td>
+                    <td>60 Minutes</td>
+                    <td><span class="status-pill">Yes</span></td>
+                </tr>
+                <tr>
+                    <td><span class="badge shift-night">Night Shift</span></td>
+                    <td>02:00 AM</td>
+                    <td>03:00 AM</td>
+                    <td>60 Minutes</td>
+                    <td><span class="status-pill">Yes</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="margin-top: 20px; border-left: 5px solid var(--primary-blue);">
+        <h4><i class="fas fa-info-circle"></i> Policy Note</h4>
+        <p style="font-size: 0.9rem; color: #555;">Break times are non-compensable and are automatically deducted from the total rendered hours based on the shift schedule configuration.</p>
+    </div>
+</section>
+
+            <!-- SECTION 3: UPLOAD (Hidden) -->
+            <section id="upload-view" style="display: none;">
+                <div class="content-header"><h2>Schedule Upload</h2></div>
+                <div class="card"><p>Batch schedule upload (Excel/CSV) utility goes here...</p></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

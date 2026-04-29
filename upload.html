@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Upload - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand-name" style="color: white; text-decoration: none;">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="change-process-date.html">Change Process Date</a>
+                        <a href="convert-logs.html">Convert Logs</a>
+                        <a href="upload.html">Upload</a>
+                        <a href="generate.html">Generate</a>
+                        <a href="view-dtr.html">View DTR</a>
+                    </div>
+                </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <div class="employee-layout">
+        <!-- SIDEBAR NAVBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Data Upload</h3>
+            </div>
+            <ul class="sidebar-links" id="upload-sidebar">
+                <li class="active"><a href="#"><i class="fas fa-file-excel"></i> Upload Excel Logs</a></li>
+                <li><a href="#"><i class="fas fa-clock"></i> Upload Checked OT</a></li>
+                <li><a href="#"><i class="fas fa-minus-circle"></i> Upload Checked Deductions</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="employee-content">
+            
+            <!-- SECTION 1: UPLOAD EXCEL LOGS -->
+            <section id="excel-logs-view">
+                <div class="content-header">
+                    <h2>Upload Excel Logs</h2>
+                </div>
+                <div class="card">
+                    <h3>Import Raw Logs</h3>
+                    <p style="color: #666; margin-bottom: 20px;">Upload the Excel file containing raw employee time-in/time-out data.</p>
+                    <div class="upload-box">
+                        <input type="file" id="logFile" accept=".xlsx, .xls, .csv">
+                        <p style="font-size: 0.8rem; color: #888; margin-top: 10px;">Supported formats: .XLSX, .XLS, .CSV</p>
+                    </div>
+                    <button class="btn check-out" style="margin-top: 20px; width: auto; padding: 12px 30px;" onclick="simulateUpload('logs')">Process Upload</button>
+                    <div id="logsMessage" class="success-message">Logs uploaded and queued for conversion!</div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: UPLOAD CHECKED OT -->
+            <section id="ot-view" style="display: none;">
+                <div class="content-header">
+                    <h2>Upload Checked OT</h2>
+                </div>
+                <div class="card">
+                    <h3>Import Approved Overtime</h3>
+                    <p style="color: #666; margin-bottom: 20px;">Select the file containing checked and approved OT hours for the current period.</p>
+                    <div class="upload-box">
+                        <input type="file" id="otFile" accept=".xlsx, .xls">
+                    </div>
+                    <button class="btn check-out" style="margin-top: 20px; width: auto; padding: 12px 30px;" onclick="simulateUpload('ot')">Process OT Upload</button>
+                    <div id="otMessage" class="success-message">Overtime records updated successfully!</div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: UPLOAD CHECKED DEDUCTIONS -->
+            <section id="deductions-view" style="display: none;">
+                <div class="content-header">
+                    <h2>Upload Checked Deductions</h2>
+                </div>
+                <div class="card">
+                    <h3>Import Payroll Deductions</h3>
+                    <p style="color: #666; margin-bottom: 20px;">Upload deductions related to undertime, absences, or other timekeeping adjustments.</p>
+                    <div class="upload-box">
+                        <input type="file" id="deductionFile" accept=".xlsx, .xls">
+                    </div>
+                    <button class="btn check-out" style="margin-top: 20px; width: auto; padding: 12px 30px;" onclick="simulateUpload('deductions')">Process Deductions</button>
+                    <div id="deductionsMessage" class="success-message">Deduction records processed!</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>

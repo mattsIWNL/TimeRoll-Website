@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Logs - TimeRoll™️</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- TOP NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="brand-name" style="color: white; text-decoration: none;">TimeRoll™️</a>
+        </div>
+        <div class="nav-right">
+            <ul class="nav-links">
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">System <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="company.html">Company</a>
+                        <a href="employee.html">Employee</a>
+                        <a href="schedule.html">Schedule</a>
+                        <a href="configuration.html">Configuration</a>
+                        <a href="holiday-lookup.html">Holiday Lookup</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Report <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="#">Timekeeping Analytics</a>
+                        <a href="#">DTR Report</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Transaction <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="change-process-date.html">Change Process Date</a>
+                        <a href="convert-logs.html">Convert Logs</a>
+                        <a href="upload.html">Upload</a>
+                        <a href="generate.html">Generate</a>
+                        <a href="view-dtr.html">View DTR</a>
+                    </div>
+                </li>
+                <li><a href="#" class="exit-btn">Exit</a></li>
+            </ul>
+            <div class="user-profile">
+                <span class="username">Admin_User</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="content-header">
+            <h2>Convert Logs</h2>
+        </div>
+
+        <!-- IMPORT SECTION -->
+        <div class="card" style="margin-bottom: 25px;">
+            <h3><i class="fas fa-file-import"></i> Import Logs for Conversion</h3>
+            <p style="color: #666; margin-bottom: 20px;">Select the processed Excel file to convert into system-recognized logs.</p>
+            
+            <div class="upload-box" id="convertUploadBox">
+                <input type="file" id="excelConverterInput" accept=".xlsx, .xls">
+                <p style="margin-top: 10px; color: #888; font-size: 0.85rem;">Only .xlsx and .xls files are supported for conversion.</p>
+            </div>
+
+            <div class="form-actions" style="margin-top: 20px;">
+                <button id="startConversionBtn" class="btn check-out" style="width: auto; padding: 12px 40px;">
+                    <i class="fas fa-sync"></i> Start Conversion
+                </button>
+            </div>
+            <div id="conversionMessage" class="success-message">File added to conversion queue!</div>
+        </div>
+
+        <!-- CONVERSION HISTORY / STATUS TABLE -->
+        <div class="card">
+            <h3><i class="fas fa-history"></i> Conversion History & Status</h3>
+            <table class="employee-table" id="conversionTable">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Imported By</th>
+                        <th>Date & Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Attendance_Jan_Week1.xlsx</td>
+                        <td>Admin_User</td>
+                        <td>Jan 24, 2025 09:15 AM</td>
+                        <td><span class="status-pill">Completed</span></td>
+                    </tr>
+                    <tr>
+                        <td>Biometric_Logs_BranchA.xls</td>
+                        <td>Admin_User</td>
+                        <td>Jan 24, 2025 10:30 AM</td>
+                        <td><span class="badge shift-morning">Processing...</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+
+    <!-- LOGOUT MODAL -->
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3><i class="fas fa-sign-out-alt"></i> Logout Confirmation</h3>
+            <p>You are about to log out of <strong>TimeRoll™️</strong>. Are you sure you want to end your session?</p>
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                <button id="confirmLogout" class="btn check-out" style="background-color: #ff4d4d;">Yes, Logout</button>
+                <button id="cancelLogout" class="btn-secondary">No, Stay</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

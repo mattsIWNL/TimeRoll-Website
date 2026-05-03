@@ -27,7 +27,22 @@ async function loadEmployeeTable() {
     }
 }
 
-// ... existing clock logic here ...
+function loadSavedCompanyName() {
+    const nameInput = document.getElementById('companyName');
+    
+    // Only proceed if we are actually on the Company page (where the input exists)
+    if (nameInput) {
+        const savedName = localStorage.getItem('companyName');
+        
+        if (savedName) {
+            // Set the input box value to the saved name
+            nameInput.value = savedName;
+        } else {
+            // Default value if nothing has ever been saved
+            nameInput.value = "Par Excellence Search Consulting Inc.";
+        }
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -508,55 +523,66 @@ document.addEventListener('DOMContentLoaded', () => {
     const dtrResults = document.getElementById('dtrResults');
 
     if (btnSearchDTR) {
-        btnSearchDTR.addEventListener('click', () => {
-            const input = document.getElementById('dtrSearchInput').value;
-            
-            if (input === "2024-001") {
-                // SHOW THE DATA
-                dtrResults.style.display = 'block';
-                
-                // 1. UPDATE STATS
-                document.getElementById('displayEmployeeName').textContent = "Juan Dela Cruz";
-                document.getElementById('statHours').textContent = "84.50";
-                document.getElementById('statOT').textContent = "120";
-                document.getElementById('statLate').textContent = "15";
-                document.getElementById('statPresent').textContent = "10";
-                document.getElementById('statAbsent').textContent = "0";
+        btnSearchDTR.addEventListener('click', async () => {
+            const empCode = document.getElementById('dtrSearchInput').value;
+            const dtrResults = document.getElementById('dtrResults');
 
-                // 2. INJECT TABLE DATA
-                const tableBody = document.getElementById('dtrTableBody');
-                tableBody.innerHTML = `
-                    <tr>
-                        <td>Jan 20, 2025</td>
-                        <td>08:00 AM</td>
-                        <td>05:00 PM</td>
-                        <td>0</td>
-                        <td>0</td>
-                        <td>9.0</td>
-                        <td>Regular</td>
-                    </tr>
-                    <tr>
-                        <td>Jan 21, 2025</td>
-                        <td>08:15 AM</td>
-                        <td>06:30 PM</td>
-                        <td>15</td>
-                        <td>90</td>
-                        <td>10.25</td>
-                        <td>Late/OT</td>
-                    </tr>
-                    <tr>
-                        <td>Jan 22, 2025</td>
-                        <td>08:00 AM</td>
-                        <td>05:00 PM</td>
-                        <td>0</td>
-                        <td>0</td>
-                        <td>9.0</td>
-                        <td>Regular</td>
-                    </tr>
-                `;
+            try {
+                const response = await fetch(`http://localhost:3000/api/dtr/${empCode}`);
+                const dtrData = await response.json();
+
+                if (dtrData.length > 0) {
+                    dtrResults.style.display = 'block';
+                    const tableBody = document.getElementById('dtrTableBody');
+                    tableBody.innerHTML = '';
+
+                    dtrData.forEach(row => {
+                        tableBody.innerHTML += `
+                            <tr>
+                                <td>${new Date(row.DTR_DATE).toLocaleDateString()}</td>
+                                <td>${row.TIME_IN}</td>
+                                <td>${row.TIME_OUT}</td>
+                                <td>${row.NLATE}</td>
+                                <td>${row.NREGOT}</td>
+                                <td>${row.WORKHRS}</td>
+                                <td>${row.REMARKS}</td>
+                            </tr>`;
+                    });
+                } else {
+                    alert("No records found for this Employee Code.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    }
+
+    loadSavedCompanyName();
+
+    /* === K. COMPANY PAGE SAVING LOGIC === */
+    const saveBtn = document.getElementById('saveBtn');
+    const nameInput = document.getElementById('companyName');
+    const msg = document.getElementById('message');
+
+    if (saveBtn && nameInput) {
+        saveBtn.addEventListener('click', () => {
+            const newName = nameInput.value.trim();
+            
+            if (newName !== "") {
+                // 1. Save to LocalStorage
+                localStorage.setItem('companyName', newName);
+                
+                // 2. Show Success Message on screen
+                if (msg) {
+                    msg.style.display = 'block';
+                    msg.textContent = "Changes saved successfully!";
+                    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                }
+
+                // 3. Simple Alert confirmation
+                alert("The company name has been saved as: " + newName);
             } else {
-                alert("Employee not found. Try searching for 2024-001");
-                dtrResults.style.display = 'none';
+                alert("Please enter a company name.");
             }
         });
     }

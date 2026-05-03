@@ -1,0 +1,7 @@
+Things to remember when setting up server on new system
+
+1. Download Node.js
+2. enter the following in terminal:
+    npm init -y
+    npm install express mysql cors body-parser
+3. configure MySQL database and tables

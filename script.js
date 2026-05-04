@@ -189,24 +189,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // SIDEBAR SWITCHERS (Generic)
-    const setupSidebar = (sidebarId, storageKey, sections) => {
-        const links = document.querySelectorAll(`#${sidebarId} li`);
+    /* === FIXED SIDEBAR SWITCHER (Generic) === */
+    const setupSidebar = (sidebarId, storageKey, sectionIds) => {
+        const sidebar = document.getElementById(sidebarId);
+        if (!sidebar) return; // Exit silently if sidebar isn't on this page
+
+        const links = sidebar.querySelectorAll('li');
         if (links.length === 0) return;
+
         const switchTab = (index) => {
             links.forEach((l, i) => {
+                // Toggle active class on the link
                 l.classList.toggle('active', i == index);
-                if (sections[i]) sections[i].style.display = (i == index) ? 'block' : 'none';
+                
+                // Find the section element by ID
+                const section = document.getElementById(sectionIds[i]);
+                if (section) {
+                    section.style.display = (i == index) ? 'block' : 'none';
+                }
             });
+            // Save the active tab to local storage
             localStorage.setItem(storageKey, index);
         };
-        links.forEach((link, index) => link.addEventListener('click', (e) => { e.preventDefault(); switchTab(index); }));
+
+        // Add click events to links
+        links.forEach((link, index) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab(index);
+            });
+        });
+
+        // Restore saved tab or default to 0
         const saved = localStorage.getItem(storageKey);
-        if (saved !== null) switchTab(saved);
+        switchTab(saved !== null ? saved : 0);
     };
 
     setupSidebar('upload-sidebar', 'activeUploadTab', { 0: document.getElementById('excel-logs-view'), 1: document.getElementById('ot-view'), 2: document.getElementById('deductions-view') });
     setupSidebar('generate-sidebar', 'activeGenerateTab', { 0: document.getElementById('approval-gen-view'), 1: document.getElementById('payroll-gen-view') });
+    // 1. Employee Page Sidebar
+    setupSidebar('employee-sidebar', 'activeEmployeeTab', { 
+        0: 'list-view', 
+        1: 'details-view', 
+        2: 'schedule-view' 
+    });
+
+    // 2. Schedule Page Sidebar
+    setupSidebar('schedule-sidebar', 'activeScheduleTab', { 
+        0: 'shifts-view', 
+        1: 'breaks-view', 
+        2: 'upload-view' 
+    });
+
+    // 3. Upload Page Sidebar
+    setupSidebar('upload-sidebar', 'activeUploadTab', { 
+        0: 'excel-logs-view', 
+        1: 'ot-view', 
+        2: 'deductions-view' 
+    });
+
+    // 4. Generate Page Sidebar
+    setupSidebar('generate-sidebar', 'activeGenerateTab', { 
+        0: 'approval-gen-view', 
+        1: 'payroll-gen-view' 
+    });
     // Note: Add logic for Employee sidebar here if needed using the same pattern
 
     // DTR SEARCH

@@ -56,12 +56,35 @@ app.get('/api/shifts', (req, res) => {
 app.get('/api/holidays', (req, res) => {
     const sql = "SELECT * FROM holiday ORDER BY MONTH, DAY";
     db.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error("Fetch Error:", err);
+            return res.status(500).json(err);
+        }
         res.json(results);
     });
 });
 
-// 6. GET DTR FOR SPECIFIC EMPLOYEE (For View DTR Page)
+// 6. ADD NEW HOLIDAY
+app.post('/api/holidays', (req, res) => {
+    // Log exactly what is arriving from the browser
+    console.log("Data received from browser:", req.body);
+
+    const { month, day, desc_text, type, holiday, branchcode, branchdesc } = req.body;
+    
+    const sql = "INSERT INTO holiday (MONTH, DAY, DESC_TEXT, TYPE, HOLIDAY, BRANCHCODE, BRANCHDESC) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    
+    db.query(sql, [month, day, desc_text, type, holiday, branchcode, branchdesc], (err, result) => {
+        if (err) {
+            // Log the detailed error to your terminal
+            console.error("MYSQL ERROR:", err.sqlMessage); 
+            // Send the detailed error back to the browser alert
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json({ message: "Success" });
+    });
+});
+
+// 7. GET DTR FOR SPECIFIC EMPLOYEE (For View DTR Page)
 app.get('/api/dtr/:empcode', (req, res) => {
     const sql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? ORDER BY DTR_DATE DESC";
     db.query(sql, [req.params.empcode], (err, results) => {
@@ -70,7 +93,7 @@ app.get('/api/dtr/:empcode', (req, res) => {
     });
 });
 
-// 7. START SERVER
+// 8. START SERVER
 app.listen(3000, () => {
     console.log("TimeRoll Backend running on http://localhost:3000");
 });

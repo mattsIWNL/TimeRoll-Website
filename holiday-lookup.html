@@ -53,13 +53,12 @@
         </div>
     </nav>
 
-    <main class="dashboard-container">
+     <main class="dashboard-container">
         <div class="content-header">
             <h2>Holiday Lookup</h2>
             <button class="btn-add" id="openHolidayModal"><i class="fas fa-plus"></i> Add Holiday</button>
         </div>
 
-        <!-- SEARCH BAR -->
         <div class="card search-card">
             <div class="form-group-inline">
                 <i class="fas fa-search" style="color: #888;"></i>
@@ -67,7 +66,6 @@
             </div>
         </div>
 
-        <!-- HOLIDAY TABLE -->
         <div class="card">
             <table class="employee-table" id="holidayTable">
                 <thead>
@@ -75,77 +73,59 @@
                         <th>Holiday Name</th>
                         <th>Date</th>
                         <th>Classification</th>
+                        <th>Branch</th>
                         <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>New Year's Day</td>
-                        <td>January 1</td>
-                        <td><span class="badge shift-morning">Regular Holiday</span></td>
-                        <td style="text-align: center;">
-                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Mauyndy Thursday</td>
-                        <td>April 17</td>
-                        <td><span class="badge shift-morning">Regular Holiday</span></td>
-                        <td style="text-align: center;">
-                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Ninoy Aquino Day</td>
-                        <td>August 21</td>
-                        <td><span class="badge shift-afternoon">Special Non-Working</span></td>
-                        <td style="text-align: center;">
-                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Christmas Day</td>
-                        <td>December 25</td>
-                        <td><span class="badge shift-morning">Regular Holiday</span></td>
-                        <td style="text-align: center;">
-                            <button class="action-icon edit"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon delete"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
+                <tbody id="holidayTableBody">
+                    <!-- DATA INJECTED BY JAVASCRIPT FROM DATABASE -->
                 </tbody>
             </table>
         </div>
     </main>
 
-    <!-- HIDDEN ADD/EDIT FORM (Simple toggle) -->
-    <div id="holidayFormContainer" class="card" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1001; width: 400px; border: 2px solid var(--primary-blue);">
-        <h3>Add/Edit Holiday</h3>
+    <!-- UPDATED ADD/EDIT MODAL -->
+    <div id="holidayFormContainer" class="card" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1001; width: 450px; border: 2px solid var(--primary-blue); box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);">
+        <h3>Add New Holiday</h3>
         <hr>
         <div class="form-group">
             <label>Holiday Name</label>
-            <input type="text" id="hName">
+            <input type="text" id="hHoliday" placeholder="e.g. Independence Day">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Month (1-12)</label>
+                <input type="number" id="hMonth" min="1" max="12">
+            </div>
+            <div class="form-group">
+                <label>Day (1-31)</label>
+                <input type="number" id="hDay" min="1" max="31">
+            </div>
         </div>
         <div class="form-group">
-            <label>Date</label>
-            <input type="text" id="hDate" placeholder="e.g. June 12">
-        </div>
-        <div class="form-group">
-            <label>Classification</label>
-            <select id="hClass" class="config-input">
-                <option value="Regular Holiday">Regular Holiday</option>
-                <option value="Special Non-Working">Special Non-Working</option>
+            <label>Classification/Type</label>
+            <select id="hType" class="config-input">
+                <option value="Legal">Legal Holiday</option>
+                <option value="Special">Special Holiday</option>
             </select>
         </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Branch Code</label>
+                <input type="text" id="hBranchCode" value="HO">
+            </div>
+            <div class="form-group">
+                <label>Branch Desc</label>
+                <input type="text" id="hBranchDesc" value="Head Office">
+            </div>
+        </div>
         <div class="form-actions">
-            <button class="btn check-out" id="saveHoliday">Save</button>
+            <button class="btn check-out" id="saveHolidayToDB">Save to Database</button>
             <button class="btn-secondary" id="closeHolidayForm">Cancel</button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+   
 
     <!-- LOGOUT MODAL -->
     <div id="logoutModal" class="modal-overlay">
@@ -158,6 +138,8 @@
             </div>
         </div>
     </div>
-
+ 
+    <script src="script.js"></script>
+    
 </body>
 </html>

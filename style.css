@@ -597,3 +597,22 @@ hr {
 .action-icon.edit:hover {
     color: #0b7dda;
 }
+
+.details-form select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fff;
+}
+
+.details-form select,
+#addEmployeeModal select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fff;
+}

@@ -42,6 +42,49 @@ async function loadEmployeeTable() {
         });
     } catch (error) { console.error("Error loading employees:", error); }
 }
+
+async function loadBreaksTable() {
+    const tableBody = document.getElementById('breaksTableBody');
+    if (!tableBody) return;
+
+    // Break rules per shift
+    const breakRules = {
+        'Morning Shift':   { period: '11:00 AM – 12:00 NN', duration: '1 hour' },
+        'Afternoon Shift': { period: '05:00 PM – 06:00 PM', duration: '1 hour' },
+        'Night Shift':     { period: '01:00 AM – 02:00 AM', duration: '1 hour' }
+    };
+
+    const shiftBadgeClass = {
+        'Morning Shift':   'shift-morning',
+        'Afternoon Shift': 'shift-afternoon',
+        'Night Shift':     'shift-night'
+    };
+
+    try {
+        const response = await fetch('http://localhost:3000/api/employees');
+        const employees = await response.json();
+        tableBody.innerHTML = '';
+
+        employees.forEach(emp => {
+            const shift = emp.SHIFT_TYPE || 'Morning Shift'; // fallback default
+            const rule  = breakRules[shift] || { period: 'N/A', duration: 'N/A' };
+            const badge = shiftBadgeClass[shift] || '';
+
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${emp.CCODE}</td>
+                    <td>${emp.CFULLNAME}</td>
+                    <td>${emp.DEPARTMENT || '—'}</td>
+                    <td><span class="badge ${badge}">${shift}</span></td>
+                    <td>${emp.SHIFT_HOURS || '—'}</td>
+                    <td>${rule.period}</td>
+                    <td>${rule.duration}</td>
+                </tr>`;
+        });
+    } catch (error) {
+        console.error('Error loading breaks table:', error);
+    }
+}
  
 async function loadHolidaysFromDB() {
     const tableBody = document.getElementById('holidayTableBody');
@@ -127,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSavedCompanyName();
     if (document.getElementById('holidayTableBody')) loadHolidaysFromDB();
     if (document.querySelector('#list-view .employee-table')) loadEmployeeTable();
+    if (document.getElementById('breaksTableBody')) loadBreaksTable();
  
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');
@@ -140,6 +184,82 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
  
+    // ADD EMPLOYEE MODAL
+    const addEmployeeModal = document.getElementById('addEmployeeModal');
+    const btnAddEmployee = document.querySelector('.btn-add');
+    if (btnAddEmployee && addEmployeeModal) {
+
+        // Open modal
+        btnAddEmployee.addEventListener('click', () => {
+            // Clear all fields
+            ['newEmpId','newFirstName','newLastName','newPosition',
+            'newDepartment','newEmail','newPhone','newAddress'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('newStatus').value = 'Active';
+            document.getElementById('addEmployeeError').style.display = 'none';
+            addEmployeeModal.style.display = 'flex';
+        });
+
+        // Close modal
+        document.getElementById('closeAddEmployeeModal').addEventListener('click', () => {
+            addEmployeeModal.style.display = 'none';
+        });
+        document.getElementById('cancelAddEmployee').addEventListener('click', () => {
+            addEmployeeModal.style.display = 'none';
+        });
+
+        // Close on backdrop click
+        addEmployeeModal.addEventListener('click', (e) => {
+            if (e.target === addEmployeeModal) addEmployeeModal.style.display = 'none';
+        });
+
+        // Save employee
+        document.getElementById('confirmAddEmployee').addEventListener('click', async () => {
+            const empId     = document.getElementById('newEmpId').value.trim();
+            const firstName = document.getElementById('newFirstName').value.trim();
+            const lastName  = document.getElementById('newLastName').value.trim();
+            const errorDiv  = document.getElementById('addEmployeeError');
+
+            // Validation: ID and Full Name required
+            if (!empId || !firstName || !lastName) {
+                errorDiv.style.display = 'block';
+                return;
+            }
+            errorDiv.style.display = 'none';
+
+            const payload = {
+                ccode:      empId,
+                firstname:  firstName,
+                lastname:   lastName,
+                position:   document.getElementById('newPosition').value.trim(),
+                department: document.getElementById('newDepartment').value.trim(),
+                email:      document.getElementById('newEmail').value.trim(),
+                phone:      document.getElementById('newPhone').value.trim(),
+                address:    document.getElementById('newAddress').value.trim(),
+                status:     document.getElementById('newStatus').value
+            };
+
+            try {
+                const response = await fetch('http://localhost:3000/api/employees', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Employee added successfully!');
+                    addEmployeeModal.style.display = 'none';
+                    loadEmployeeTable(); // Refresh the table
+                } else {
+                    alert('Error saving employee: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Could not connect to server. Check if Node is running.');
+            }
+        });
+    }
+
     // HOLIDAY MODAL TOGGLE
     const openHolidayBtn = document.getElementById('openHolidayModal');
     const holidayFormContainer = document.getElementById('holidayFormContainer');
@@ -276,7 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSidebar('employee-sidebar', 'employeeSidebarTab', [
         'list-view',
         'details-view',
-        'schedule-view'
+        'schedule-view',
+        'breaks-view'     // index 3
     ]);
  
     setupSidebar('schedule-sidebar', 'scheduleSidebarTab', [

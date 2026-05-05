@@ -32,6 +32,26 @@ app.get('/api/employees', (req, res) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
+});app.get('/api/employees', (req, res) => {
+    const sql = `
+        SELECT 
+            e.CCODE, 
+            e.CFULLNAME, 
+            e.POSITION_I, 
+            e.DEPTID, 
+            e.ACTIVE,
+            s.CCODE   AS SHIFT_CODE,
+            s.CDESC   AS SHIFT_TYPE,
+            s.CLOGIN  AS SHIFT_IN,
+            s.CLOGOUT AS SHIFT_OUT,
+            s.WORKHRS AS SHIFT_HOURS
+        FROM employee e
+        LEFT JOIN shiftdb s ON e.SHIFTCODE = s.CCODE
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
 });
 
 // 3. GET SINGLE EMPLOYEE DETAILS (For Employee Details Lookup)

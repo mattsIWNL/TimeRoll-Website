@@ -1,3 +1,24 @@
+let isEditMode = false;
+let editIdentifiers = {}; // Stores the original values to find the record later
+
+function openEditModal(h) {
+    isEditMode = true;
+    editIdentifiers = { oldMonth: h.MONTH, oldDay: h.DAY, oldBranchCode: h.BRANCHCODE };
+
+    // Fill the form
+    document.getElementById('hHoliday').value = h.HOLIDAY;
+    document.getElementById('hMonth').value = h.MONTH;
+    document.getElementById('hDay').value = h.DAY;
+    document.getElementById('hType').value = h.TYPE;
+    document.getElementById('hBranchCode').value = h.BRANCHCODE;
+    document.getElementById('hBranchDesc').value = h.BRANCHDESC;
+
+    // Change UI to reflect Editing
+    document.querySelector('#holidayFormContainer h3').textContent = "Edit Holiday";
+    document.getElementById('saveHolidayToDB').textContent = "Update Database";
+    document.getElementById('holidayFormContainer').style.display = 'block';
+}
+
 // --- 1. GATEKEEPER ---
 if (!localStorage.getItem('isLoggedIn') && !window.location.pathname.includes('login.html')) {
     window.location.href = 'login.html';
@@ -34,6 +55,7 @@ async function loadHolidaysFromDB() {
         tableBody.innerHTML = ''; 
         const monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         holidays.forEach(h => {
+            const hString = JSON.stringify(h).replace(/"/g, '&quot;'); 
             tableBody.innerHTML += `
                 <tr>
                     <td>${h.HOLIDAY}</td>
@@ -41,6 +63,9 @@ async function loadHolidaysFromDB() {
                     <td><span class="badge ${h.TYPE === 'Legal' ? 'shift-morning' : 'shift-afternoon'}">${h.TYPE}</span></td>
                     <td>${h.BRANCHDESC}</td>
                     <td style="text-align: center;">
+                        <button class="action-icon edit" onclick='openEditModal(${hString})'>
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="action-icon delete" onclick="deleteHoliday(${h.MONTH}, ${h.DAY}, '${h.BRANCHCODE}')">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -52,11 +77,28 @@ async function loadHolidaysFromDB() {
 
 // New function to handle deletion
 async function deleteHoliday(month, day, branch) {
-    if (!confirm("Delete this holiday?")) return;
+    // 1. Ask for confirmation
+    if (!confirm(`Are you sure you want to delete this holiday?`)) return;
+
     try {
-        // You'll need to add this DELETE route to your server.js later
-        alert("Delete functionality triggered for: " + month + "/" + day);
-    } catch (err) { console.error(err); }
+        // 2. Send DELETE request to the server
+        const response = await fetch(`http://localhost:3000/api/holidays/${month}/${day}/${branch}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("Holiday deleted successfully.");
+            // 3. Refresh the table to show it's gone
+            loadHolidaysFromDB(); 
+        } else {
+            alert("Error deleting holiday: " + (result.error || "Unknown error"));
+        }
+    } catch (err) {
+        console.error("Fetch error:", err);
+        alert("Could not connect to server. Check if Node is running.");
+    }
 }
 
 function loadSavedCompanyName() {
@@ -116,6 +158,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('closeHolidayForm').addEventListener('click', () => holidayFormContainer.style.display = 'none');
     }
 
+    openHolidayBtn.addEventListener('click', () => {
+    isEditMode = false;
+    document.querySelector('#holidayFormContainer h3').textContent = "Add New Holiday";
+    document.getElementById('saveHolidayToDB').textContent = "Save to Database";
+    // Optional: Clear form values here
+    document.getElementById('hHoliday').value = "";
+    document.getElementById('holidayFormContainer').style.display = 'block';
+});
+
     // HOLIDAY SAVE TO DB
     const saveHolidayBtn = document.getElementById('saveHolidayToDB');
     if (saveHolidayBtn) {
@@ -130,9 +181,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 desc_text: "HOLIDAY" 
             };
 
+            // If editing, add identifiers and change method to PUT
+            let currentMethod = isEditMode ? 'PUT' : 'POST'; 
+            if (isEditMode) {
+                Object.assign(payload, editIdentifiers);
+            }
+
             try {
+                let currentMethod = isEditMode ? 'PUT' : 'POST'; // Define this above the fetch
+
                 const response = await fetch('http://localhost:3000/api/holidays', {
-                    method: 'POST',
+                    method: currentMethod,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
@@ -142,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     alert("Saved to Database!");
                     document.getElementById('holidayFormContainer').style.display = 'none';
+                     isEditMode = false; // Reset mode
                     loadHolidaysFromDB();
                 } else {
                     // This will now show the EXACT error from MySQL

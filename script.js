@@ -57,6 +57,29 @@ async function deleteHoliday(month, day, branch) {
         // You'll need to add this DELETE route to your server.js later
         alert("Delete functionality triggered for: " + month + "/" + day);
     } catch (err) { console.error(err); }
+}async function deleteHoliday(month, day, branch) {
+    // 1. Ask for confirmation
+    if (!confirm(`Are you sure you want to delete this holiday?`)) return;
+
+    try {
+        // 2. Send DELETE request to the server
+        const response = await fetch(`http://localhost:3000/api/holidays/${month}/${day}/${branch}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("Holiday deleted successfully.");
+            // 3. Refresh the table to show it's gone
+            loadHolidaysFromDB(); 
+        } else {
+            alert("Error deleting holiday: " + (result.error || "Unknown error"));
+        }
+    } catch (err) {
+        console.error("Fetch error:", err);
+        alert("Could not connect to server. Check if Node is running.");
+    }
 }
 
 function loadSavedCompanyName() {

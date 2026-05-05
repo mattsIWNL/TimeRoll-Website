@@ -105,7 +105,30 @@ app.delete('/api/holidays/:month/:day/:branchcode', (req, res) => {
     });
 });
 
-// 8. GET DTR FOR SPECIFIC EMPLOYEE (For View DTR Page)
+// 8. UPDATE AN EXISTING HOLIDAY
+app.put('/api/holidays', (req, res) => {
+    const { 
+        oldMonth, oldDay, oldBranchCode, // Used to find the record
+        month, day, holiday, type, branchcode, branchdesc, desc_text // New values
+    } = req.body;
+
+    const sql = `
+        UPDATE holiday 
+        SET MONTH = ?, DAY = ?, HOLIDAY = ?, TYPE = ?, BRANCHCODE = ?, BRANCHDESC = ?, DESC_TEXT = ?
+        WHERE MONTH = ? AND DAY = ? AND BRANCHCODE = ?`;
+
+    const params = [month, day, holiday, type, branchcode, branchdesc, desc_text, oldMonth, oldDay, oldBranchCode];
+
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.error("MYSQL UPDATE ERROR:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json({ message: "Update successful" });
+    });
+});
+
+// 9. GET DTR FOR SPECIFIC EMPLOYEE (For View DTR Page)
 app.get('/api/dtr/:empcode', (req, res) => {
     const sql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? ORDER BY DTR_DATE DESC";
     db.query(sql, [req.params.empcode], (err, results) => {
@@ -114,7 +137,7 @@ app.get('/api/dtr/:empcode', (req, res) => {
     });
 });
 
-// 9. START SERVER
+// 10. START SERVER
 app.listen(3000, () => {
     console.log("TimeRoll Backend running on http://localhost:3000");
 });

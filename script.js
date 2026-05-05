@@ -25,7 +25,7 @@ if (!localStorage.getItem('isLoggedIn') && !window.location.pathname.includes('l
 // --- 2. GLOBAL FUNCTIONS ---
  
 async function loadEmployeeTable() {
-    const tableBody = document.querySelector('#list-view .employee-table tbody');
+     const tableBody = document.querySelector('#list-view .employee-table tbody');
     if (!tableBody) return;
     try {
         const response = await fetch('http://localhost:3000/api/employees');
@@ -37,6 +37,10 @@ async function loadEmployeeTable() {
                     <td>${emp.CCODE}</td>
                     <td>${emp.CFULLNAME}</td>
                     <td>${emp.POSITION_I}</td>
+                    <td>${emp.DEPTID || '—'}</td>
+                    <td>${emp.EMAIL_ADD || '—'}</td>
+                    <td>${emp.MOBILENO || '—'}</td>
+                    <td>${emp.ADDRESS1 || '—'}</td>
                     <td><span class="status-pill">${emp.ACTIVE ? 'Active' : 'Inactive'}</span></td>
                 </tr>`;
         });
@@ -220,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstName = document.getElementById('newFirstName').value.trim();
             const lastName  = document.getElementById('newLastName').value.trim();
             const errorDiv  = document.getElementById('addEmployeeError');
+            
 
             // Validation: ID and Full Name required
             if (!empId || !firstName || !lastName) {
@@ -231,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = {
                 ccode:      empId,
                 firstname:  firstName,
+                middlename: '',
                 lastname:   lastName,
                 position:   document.getElementById('newPosition').value.trim(),
                 department: document.getElementById('newDepartment').value.trim(),
@@ -241,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
+                console.log("Sending payload:", JSON.stringify(payload));
                 const response = await fetch('http://localhost:3000/api/employees', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -258,6 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Could not connect to server. Check if Node is running.');
             }
         });
+
+        
     }
 
     // HOLIDAY MODAL TOGGLE

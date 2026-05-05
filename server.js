@@ -5,7 +5,14 @@ const bodyParser = require('body-parser');
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+
+app.all('/api/employees', (req, res, next) => {
+    console.log('HIT:', req.method);
+    next();
+});
+
+app.use(express.urlencoded({ extended: true }));
 
 // 1. DATABASE CONNECTION
 const db = mysql.createConnection({
@@ -27,26 +34,23 @@ db.connect(err => {
 
 // 2. GET ALL EMPLOYEES (For Employee List Page)
 app.get('/api/employees', (req, res) => {
-    const sql = "SELECT CCODE, CFULLNAME, POSITION_I, DEPTID, ACTIVE FROM employee";
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results);
-    });
-});app.get('/api/employees', (req, res) => {
     const sql = `
         SELECT 
-            e.CCODE, 
-            e.CFULLNAME, 
-            e.POSITION_I, 
-            e.DEPTID, 
+            e.CCODE,
+            e.CFULLNAME,
+            e.POSITION_I,
+            e.DEPTID,
             e.ACTIVE,
+            e.EMAIL_ADD,
+            e.MOBILENO,
+            e.ADDRESS1,
             s.CCODE   AS SHIFT_CODE,
             s.CDESC   AS SHIFT_TYPE,
             s.CLOGIN  AS SHIFT_IN,
             s.CLOGOUT AS SHIFT_OUT,
             s.WORKHRS AS SHIFT_HOURS
         FROM employee e
-        LEFT JOIN shiftdb s ON e.SHIFTCODE = s.CCODE
+        LEFT JOIN shiftdb s ON e.SHIFT_ID = s.CCODE
     `;
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
@@ -54,14 +58,95 @@ app.get('/api/employees', (req, res) => {
     });
 });
 
-// 3. GET SINGLE EMPLOYEE DETAILS (For Employee Details Lookup)
-app.get('/api/employees/:ccode', (req, res) => {
-    const sql = "SELECT * FROM employee WHERE CCODE = ?";
-    db.query(sql, [req.params.ccode], (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results[0]);
+
+
+// 3B. ADD NEW EMPLOYEE
+app.post('/api/employees', (req, res) => {
+    console.log("POST /api/employees hit!");
+    console.log("Body received:", req.body);
+    const { ccode, firstname, middlename, lastname, position, department, email, phone, address, status } = req.body;
+
+    const fullname  = `${lastname}, ${firstname}`;
+    const empStatus = status === 'Active'     ? 'AC'
+                    : status === 'Onboarding' ? 'OB'
+                    : status === 'Contract'   ? 'CT'
+                    : 'IN';
+    const isActive  = (status === 'Active') ? 1 : 0;
+
+    const sql = `
+        INSERT INTO employee (
+            CCODE, CFNAME, CMNAME, CLNAME, CFULLNAME,
+            EMAIL_ADD, MOBILENO, ADDRESS1, ADDRESS2,
+            POSITION_I, DEPTID, ACTIVE, EMP_STATUS,
+            SHIFT_ID, BRANCHID, CGROUP, DED_SCHED,
+            CIVILSTAT, SEX, SAL_TYPE, TAX_STATUS, PAYMODE,
+            SALARY, PERHRFLAG,
+            DHIRED, DRESIGN, DCONTRACT, DTERMINATE,
+            LTERMINATE, LRESIGN, LPROJECTBA, CONFIDENTI,
+            WITH_ATM, LECOLA, ECOLAAUTO,
+            TERMREASON, BIRTHPLACE, CITIZENSHI,
+            TELNO, ZIPCODE, SPOUSE, SPOUSETIN,
+            EMER_NAME, EMER_NO, PICT_PATH,
+            HEIGHT, WEIGHT, RELIGION,
+            BANK_NAME, ACCT_NO,
+            TIN_NO, SSS_NO, PH_NO, PI_NO,
+            TIN_EXEMPT, SSS_EXEMPT, PH_EXEMPT, PI_EXEMPT,
+            TIN_BASIS, SSS_BASIS, PH_BASIS, PI_BASIS,
+            TIN_PBASIS, TAX_SHIELD, TAX_SHIEL2,
+            TAXPERSHIE, TAXAMTSHIE,
+            MONTH_COMP, DAILY_COMP, HOUR_COMP,
+            NECOLAAMT, NECOLADAY, NECOLAHR,
+            PREVGROSS, PREVPI_EE, PREVPI_ER,
+            PAY_TAX, PAY_SSS, NBONUS, NWTAX,
+            NTOTTAXINC, NPREMDED,
+            SPOUSEGROS, SPOUSEWITH,
+            BDATE, SPOUSEEFFY,
+            AGE
+        ) VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, '',
+            ?, ?, ?, ?,
+            '', '', '', '',
+            '', 0, 'M', '', '',
+            0, 0,
+            '1900-01-01', '1900-01-01', '1900-01-01', '1900-01-01',
+            0, 0, 0, 0,
+            0, 0, 0,
+            '', '', '',
+            '', '', '', '',
+            '', '', '',
+            '', '', '',
+            '', '',
+            '', '', '', '',
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0,
+            0, 0,
+            0, 0, 0,
+            0, 0, 0,
+            0, 0, 0,
+            0, 0, 0, 0,
+            0, 0,
+            0, 0,
+            '1900-01-01', '1900-01-01',
+            0
+        )
+    `;
+
+    db.query(sql, [
+        ccode, firstname, middlename || '', lastname, fullname,
+        email || '', phone || '', address || '',
+        position || '', department || '', isActive, empStatus
+    ], (err, result) => {
+        if (err) {
+            console.error("MYSQL INSERT ERROR:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json({ message: "Employee added successfully." });
     });
 });
+
+
 
 // 4. GET ALL SHIFTS (For Schedule Page)
 app.get('/api/shifts', (req, res) => {

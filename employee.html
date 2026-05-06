@@ -130,7 +130,7 @@
                 <div class="card search-card">
                     <div class="form-group-inline">
                         <label for="searchId">Enter Employee ID to Update:</label>
-                        <input type="text" id="searchId" placeholder="e.g. 2024-001">
+                        <input type="text" id="searchId" placeholder="e.g. 2024001">
                         <button class="btn-search" id="btnLookup">Lookup</button>
                     </div>
                 </div>
@@ -194,6 +194,16 @@
                                 <option value="Onboarding">Onboarding</option>
                                 <option value="Contract">Contract</option>
                                 <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 6: Assigned Schedule -->
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Assigned Schedule</label>
+                            <select id="editSchedule">
+                                <option value="">-- Select Schedule --</option>
                             </select>
                         </div>
                     </div>

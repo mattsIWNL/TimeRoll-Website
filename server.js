@@ -58,7 +58,53 @@ app.get('/api/employees', (req, res) => {
     });
 });
 
+// GET SINGLE EMPLOYEE BY ID
+app.get('/api/employees/:id', (req, res) => {
+    const sql = `
+        SELECT e.CCODE, e.CFNAME, e.CMNAME, e.CLNAME, e.CFULLNAME,
+               e.POSITION_I, e.DEPTID, e.EMAIL_ADD,
+               e.MOBILENO, e.ADDRESS1, e.ACTIVE, e.EMP_STATUS,
+               e.SHIFT_ID
+        FROM employee e
+        WHERE e.CCODE = ?
+    `;
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) {
+            console.error("MYSQL ERROR:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        if (results.length === 0) return res.status(404).json({ error: 'Employee not found.' });
+        res.json(results[0]);
+    });
+});
 
+
+// UPDATE EMPLOYEE BY ID
+app.put('/api/employees/:id', (req, res) => {
+    const { firstname, lastname, position, department, email, phone, address, statusCode, isActive, shiftId } = req.body;
+    const fullname = `${lastname}, ${firstname}`;
+
+    const sql = `
+        UPDATE employee
+        SET CFNAME = ?, CLNAME = ?, CFULLNAME = ?,
+            POSITION_I = ?, DEPTID = ?,
+            EMAIL_ADD = ?, MOBILENO = ?, ADDRESS1 = ?,
+            EMP_STATUS = ?, ACTIVE = ?,
+            SHIFT_ID = ?
+        WHERE CCODE = ?
+    `;
+    db.query(sql, [
+        firstname, lastname, fullname,
+        position, department,
+        email, phone, address,
+        statusCode, isActive,
+        shiftId || '',
+        req.params.id
+    ], (err) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        res.json({ message: 'Employee updated successfully.' });
+    });
+});
 
 // 3B. ADD NEW EMPLOYEE
 app.post('/api/employees', (req, res) => {
@@ -146,14 +192,45 @@ app.post('/api/employees', (req, res) => {
     });
 });
 
-
-
 // 4. GET ALL SHIFTS (For Schedule Page)
 app.get('/api/shifts', (req, res) => {
     const sql = "SELECT CCODE, CDESC, CLOGIN, CLOGOUT, WORKHRS FROM shiftdb";
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
+    });
+});
+
+// ADD NEW SHIFT
+app.post('/api/shifts', (req, res) => {
+    const { ccode, cdesc, clogin, clogout, workhrs } = req.body;
+    const sql = "INSERT INTO shiftdb (CCODE, CDESC, CLOGIN, CLOGOUT, WORKHRS) VALUES (?, ?, ?, ?, ?)";
+    db.query(sql, [ccode, cdesc, clogin, clogout, workhrs], (err) => {
+        if (err) {
+            console.error("MYSQL INSERT ERROR:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json({ message: "Shift added successfully." });
+    });
+});
+
+// UPDATE SHIFT
+app.put('/api/shifts/:id', (req, res) => {
+    const { cdesc, clogin, clogout, workhrs } = req.body;
+    const sql = "UPDATE shiftdb SET CDESC = ?, CLOGIN = ?, CLOGOUT = ?, WORKHRS = ? WHERE CCODE = ?";
+    db.query(sql, [cdesc, clogin, clogout, workhrs, req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        res.json({ message: "Shift updated successfully." });
+    });
+});
+
+// DELETE SHIFT
+app.delete('/api/shifts/:id', (req, res) => {
+    const sql = "DELETE FROM shiftdb WHERE CCODE = ?";
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (result.affectedRows === 0) return res.status(404).json({ error: "Shift not found." });
+        res.json({ message: "Shift deleted successfully." });
     });
 });
 

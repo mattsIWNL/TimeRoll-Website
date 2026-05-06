@@ -89,7 +89,22 @@ async function loadBreaksTable() {
         console.error('Error loading breaks table:', error);
     }
 }
- 
+
+async function loadShiftDropdown() {
+    const select = document.getElementById('editSchedule');
+    if (!select) return;
+    try {
+        const response = await fetch('http://localhost:3000/api/shifts');
+        const shifts = await response.json();
+        select.innerHTML = '<option value="">-- Select Schedule --</option>';
+        shifts.forEach(s => {
+            select.innerHTML += `<option value="${s.CCODE}">${s.CDESC} (${s.CLOGIN} - ${s.CLOGOUT})</option>`;
+        });
+    } catch (err) {
+        console.error('Error loading shifts:', err);
+    }
+}
+
 async function loadHolidaysFromDB() {
     const tableBody = document.getElementById('holidayTableBody');
     if (!tableBody) return;
@@ -175,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('holidayTableBody')) loadHolidaysFromDB();
     if (document.querySelector('#list-view .employee-table')) loadEmployeeTable();
     if (document.getElementById('breaksTableBody')) loadBreaksTable();
+    if (document.getElementById('editSchedule')) loadShiftDropdown();
  
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');
@@ -426,6 +442,97 @@ document.addEventListener('DOMContentLoaded', () => {
         'payroll-gen-view'
     ]);
  
+    // EMPLOYEE DETAILS LOOKUP
+    const btnLookup = document.getElementById('btnLookup');
+    if (btnLookup) {
+        btnLookup.addEventListener('click', async () => {
+            const empId = document.getElementById('searchId').value.trim();
+            if (!empId) {
+                alert('Please enter an Employee ID.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/employees/${empId}`);
+                if (response.status === 404) {
+                    alert('No employee found with that ID.');
+                    return;
+                }
+                const emp = await response.json();
+
+                // Name fallback: use CFNAME/CLNAME if available, else split CFULLNAME
+                let firstName = emp.CFNAME || '';
+                let lastName  = emp.CLNAME  || '';
+                if (!firstName && !lastName && emp.CFULLNAME) {
+                    const parts = emp.CFULLNAME.split(',');
+                    lastName  = (parts[0] || '').trim();
+                    firstName = (parts[1] || '').trim();
+                }
+
+                // Populate the form fields
+                document.getElementById('editFirstName').value  = emp.CFNAME       || '';
+                document.getElementById('editLastName').value   = emp.CLNAME        || '';
+                document.getElementById('editPosition').value   = emp.POSITION_I    || '';
+                document.getElementById('editDepartment').value = emp.DEPTID        || '';
+                document.getElementById('editEmail').value      = emp.EMAIL_ADD     || '';
+                document.getElementById('editContact').value    = emp.MOBILENO      || '';
+                document.getElementById('editAddress').value    = emp.ADDRESS1      || '';
+                document.getElementById('editSchedule').value = emp.SHIFT_ID || '';
+
+                // Map EMP_STATUS back to the dropdown values
+                const statusMap = { AC: 'Active', OB: 'Onboarding', CT: 'Contract', IN: 'Inactive' };
+                document.getElementById('editStatus').value = statusMap[emp.EMP_STATUS] || 'Active';
+
+            } catch (err) {
+                console.error('Lookup error:', err);
+                alert('Could not connect to server. Check if Node is running.');
+            }
+        });
+    }
+
+    // SAVE CHANGES (Employee Details)
+    const btnUpdateDetails = document.getElementById('btnUpdateDetails');
+    if (btnUpdateDetails) {
+        btnUpdateDetails.addEventListener('click', async () => {
+            const empId = document.getElementById('searchId').value.trim();
+            if (!empId) { alert('Please look up an employee first.'); return; }
+
+            const statusVal = document.getElementById('editStatus').value;
+            const statusCode = { Active: 'AC', Onboarding: 'OB', Contract: 'CT', Inactive: 'IN' }[statusVal] || 'AC';
+
+            const payload = {
+                firstname:  document.getElementById('editFirstName').value.trim(),
+                lastname:   document.getElementById('editLastName').value.trim(),
+                position:   document.getElementById('editPosition').value.trim(),
+                department: document.getElementById('editDepartment').value.trim(),
+                email:      document.getElementById('editEmail').value.trim(),
+                phone:      document.getElementById('editContact').value.trim(),
+                address:    document.getElementById('editAddress').value.trim(),
+                statusCode,
+                isActive:   statusVal === 'Active' ? 1 : 0,
+                shiftId:    document.getElementById('editSchedule').value
+            };
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/employees/${empId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById('updateMessage').style.display = 'block';
+                    setTimeout(() => document.getElementById('updateMessage').style.display = 'none', 3000);
+                    loadEmployeeTable(); // refresh the list
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Could not connect to server.');
+            }
+        });
+    }
+
     // DTR SEARCH
     const btnSearchDTR = document.getElementById('btnSearchDTR');
     if (btnSearchDTR) {

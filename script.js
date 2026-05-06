@@ -1,5 +1,7 @@
 let isEditMode = false;
 let editIdentifiers = {};
+let isEditShift = false;
+let editShiftCode = '';
  
 function openEditModal(h) {
     isEditMode = true;
@@ -16,7 +18,38 @@ function openEditModal(h) {
     document.getElementById('saveHolidayToDB').textContent = "Update Database";
     document.getElementById('holidayFormContainer').style.display = 'block';
 }
- 
+
+function openEditShift(code, desc, login, logout, workhrs) {
+    isEditShift = true;
+    editShiftCode = code;
+    document.getElementById('shiftModalTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Shift';
+    document.getElementById('shiftCode').value    = code;
+    document.getElementById('shiftCode').disabled = true;
+    document.getElementById('shiftDesc').value    = desc;
+    document.getElementById('shiftLogin').value   = login;
+    document.getElementById('shiftLogout').value  = logout;
+    document.getElementById('shiftWorkhrs').value = workhrs;
+    document.getElementById('confirmShift').textContent = 'Update Shift';
+    document.getElementById('shiftModalError').style.display = 'none';
+    document.getElementById('shiftModal').style.display = 'flex';
+}
+
+async function deleteShift(code) {
+    if (!confirm(`Delete shift "${code}"? Employees assigned to it will lose their schedule.`)) return;
+    try {
+        const response = await fetch(`http://localhost:3000/api/shifts/${code}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok) {
+            alert('Shift deleted.');
+            loadShiftsTable();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Could not connect to server.');
+    }
+}
+
 // --- 1. GATEKEEPER ---
 if (!localStorage.getItem('isLoggedIn') && !window.location.pathname.includes('login.html')) {
     window.location.href = 'login.html';
@@ -102,6 +135,81 @@ async function loadShiftDropdown() {
         });
     } catch (err) {
         console.error('Error loading shifts:', err);
+    }
+}
+
+async function loadShiftsTable() {
+    const tableBody = document.getElementById('shiftsTableBody');
+    if (!tableBody) return;
+    try {
+        const response = await fetch('http://localhost:3000/api/shifts');
+        const shifts = await response.json();
+        tableBody.innerHTML = '';
+        if (shifts.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">No shifts found. Create one to get started.</td></tr>';
+            return;
+        }
+        shifts.forEach(s => {
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${s.CCODE}</td>
+                    <td>${s.CDESC}</td>
+                    <td>${s.CLOGIN}</td>
+                    <td>${s.CLOGOUT}</td>
+                    <td>${s.WORKHRS} hrs</td>
+                    <td style="text-align:center;">
+                        <button class="action-icon edit" onclick="openEditShift('${s.CCODE}','${s.CDESC}','${s.CLOGIN}','${s.CLOGOUT}',${s.WORKHRS})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-icon delete" onclick="deleteShift('${s.CCODE}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error('Error loading shifts:', err);
+    }
+}
+
+async function loadAssignedScheduleTable() {
+    const tableBody = document.getElementById('assignedScheduleBody');
+    if (!tableBody) return;
+    try {
+        const response = await fetch('http://localhost:3000/api/employees');
+        const employees = await response.json();
+        tableBody.innerHTML = '';
+
+        if (employees.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">No employees found.</td></tr>';
+            return;
+        }
+
+        employees.forEach(emp => {
+            const hasShift = emp.SHIFT_TYPE && emp.SHIFT_TYPE.trim() !== '';
+            const shiftBadgeClass = {
+                'Morning Shift':   'shift-morning',
+                'Afternoon Shift': 'shift-afternoon',
+                'Night Shift':     'shift-night'
+            }[emp.SHIFT_TYPE] || '';
+
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${emp.CCODE}</td>
+                    <td>${emp.CFULLNAME}</td>
+                    <td>${emp.POSITION_I || '—'}</td>
+                    <td>${emp.DEPTID || '—'}</td>
+                    <td>${hasShift
+                        ? `<span class="badge ${shiftBadgeClass}">${emp.SHIFT_TYPE}</span>`
+                        : '<span style="color:#999;">— Unassigned —</span>'
+                    }</td>
+                    <td>${emp.SHIFT_IN  || '—'}</td>
+                    <td>${emp.SHIFT_OUT || '—'}</td>
+                    <td>${emp.SHIFT_HOURS ? emp.SHIFT_HOURS + ' hrs' : '—'}</td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error('Error loading assigned schedules:', err);
     }
 }
 
@@ -191,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('#list-view .employee-table')) loadEmployeeTable();
     if (document.getElementById('breaksTableBody')) loadBreaksTable();
     if (document.getElementById('editSchedule')) loadShiftDropdown();
+    if (document.getElementById('assignedScheduleBody')) loadAssignedScheduleTable();
  
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');
@@ -283,6 +392,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         
+    }
+
+    // SHIFTS TABLE + MODAL
+    if (document.getElementById('shiftsTableBody')) loadShiftsTable();
+
+    const shiftModal = document.getElementById('shiftModal');
+    const openAddShiftBtn = document.getElementById('openAddShiftModal');
+    if (shiftModal && openAddShiftBtn) {
+
+        openAddShiftBtn.addEventListener('click', () => {
+            isEditShift = false;
+            editShiftCode = '';
+            document.getElementById('shiftModalTitle').innerHTML = '<i class="fas fa-clock"></i> Add New Shift';
+            document.getElementById('shiftCode').disabled = false;
+            document.getElementById('confirmShift').textContent = 'Save Shift';
+            ['shiftCode','shiftDesc','shiftLogin','shiftLogout','shiftWorkhrs']
+                .forEach(id => document.getElementById(id).value = '');
+            document.getElementById('shiftModalError').style.display = 'none';
+            shiftModal.style.display = 'flex';
+        });
+
+        document.getElementById('closeShiftModal').addEventListener('click', () => shiftModal.style.display = 'none');
+        document.getElementById('cancelShift').addEventListener('click', () => shiftModal.style.display = 'none');
+        shiftModal.addEventListener('click', (e) => { if (e.target === shiftModal) shiftModal.style.display = 'none'; });
+
+        document.getElementById('confirmShift').addEventListener('click', async () => {
+            const code     = document.getElementById('shiftCode').value.trim();
+            const desc     = document.getElementById('shiftDesc').value.trim();
+            const login    = document.getElementById('shiftLogin').value;
+            const logout   = document.getElementById('shiftLogout').value;
+            const workhrs  = document.getElementById('shiftWorkhrs').value;
+            const errorDiv = document.getElementById('shiftModalError');
+
+            if (!code || !desc || !login || !logout || !workhrs) {
+                errorDiv.style.display = 'block';
+                return;
+            }
+            errorDiv.style.display = 'none';
+
+            const payload = { ccode: code, cdesc: desc, clogin: login, clogout: logout, workhrs: parseFloat(workhrs) };
+            const url    = isEditShift ? `http://localhost:3000/api/shifts/${editShiftCode}` : 'http://localhost:3000/api/shifts';
+            const method = isEditShift ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert(isEditShift ? 'Shift updated!' : 'Shift added!');
+                    shiftModal.style.display = 'none';
+                    loadShiftsTable();
+                    if (document.getElementById('editSchedule')) loadShiftDropdown();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Could not connect to server.');
+            }
+        });
     }
 
     // HOLIDAY MODAL TOGGLE

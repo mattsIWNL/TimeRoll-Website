@@ -225,39 +225,22 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <table class="employee-table">
+                <div class="card" style="overflow-x: auto;">
+                    <table class="employee-table" style="min-width: 850px;">
                         <thead>
                             <tr>
                                 <th>Employee ID</th>
                                 <th>Full Name</th>
+                                <th>Position</th>
                                 <th>Department</th>
-                                <th>Schedule Type</th>
-                                <th>Shift Hours</th>
+                                <th>Assigned Schedule</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Work Hours</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>2024-001</td>
-                                <td>Dela Cruz, Juan</td>
-                                <td>Executive Search</td>
-                                <td><span class="badge shift-morning">Morning Shift</span></td>
-                                <td>08:00 AM - 05:00 PM</td>
-                            </tr>
-                            <tr>
-                                <td>2024-002</td>
-                                <td>Santos, Maria</td>
-                                <td>Operations</td>
-                                <td><span class="badge shift-afternoon">Afternoon Shift</span></td>
-                                <td>01:00 PM - 10:00 PM</td>
-                            </tr>
-                            <tr>
-                                <td>2024-005</td>
-                                <td>Reyes, Ricardo</td>
-                                <td>IT Support</td>
-                                <td><span class="badge shift-night">Night Shift</span></td>
-                                <td>10:00 PM - 07:00 AM</td>
-                            </tr>
+                        <tbody id="assignedScheduleBody">
+                            <!-- Populated dynamically -->
                         </tbody>
                     </table>
                 </div>

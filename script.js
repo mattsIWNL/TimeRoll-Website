@@ -2,7 +2,188 @@ let isEditMode = false;
 let editIdentifiers = {};
 let isEditShift = false;
 let editShiftCode = '';
- 
+let breakRowCount = 0;
+
+function to12Hour(timeStr) {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function to24Hour(timeStr) {
+    if (!timeStr) return '';
+    const [time, modifier] = timeStr.trim().split(' ');
+    if (!modifier) return timeStr; // already 24hr
+    let [hours, minutes] = time.split(':').map(Number);
+    if (modifier === 'PM' && hours !== 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function addBreakRow(data = null) {
+    breakRowCount++;
+    const seq = breakRowCount;
+    const container = document.getElementById('breakRowsContainer');
+    const noBreaksMsg = document.getElementById('noBreaksMsg');
+    if (noBreaksMsg) noBreaksMsg.style.display = 'none';
+
+    const row = document.createElement('div');
+    row.className = 'break-row';
+    row.dataset.seq = seq;
+    row.style.cssText = 'background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:10px; position:relative;';
+
+    row.innerHTML = `
+        <button type="button" onclick="removeBreakRow(this)" 
+            style="position:absolute; top:8px; right:10px; background:none; border:none; color:#e74c3c; cursor:pointer; font-size:14px;">
+            <i class="fas fa-times"></i>
+        </button>
+        <div style="font-size:12px; font-weight:600; color:#666; margin-bottom:8px;">Break #${seq}</div>
+        <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group">
+                <label style="font-size:12px;">Break Code <span style="color:red;">*</span></label>
+                <input type="text" class="brk-ccode" placeholder="e.g. BRK00${seq}" 
+                    value="${data ? data.CCODE : ''}">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;">Description <span style="color:red;">*</span></label>
+                <input type="text" class="brk-desc" placeholder="e.g. Lunch Break" 
+                    value="${data ? data.DESC_TEXT : ''}">
+            </div>
+        </div>
+        <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group">
+                <label style="font-size:12px;">Break Out <span style="color:red;">*</span></label>
+                <input type="time" class="brk-out" value="${data ? to24Hour(data.BREAK_OUT) : ''}">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;">Break In <span style="color:red;">*</span></label>
+                <input type="time" class="brk-in" value="${data ? to24Hour(data.BREAK_IN) : ''}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label style="font-size:12px;">System Break Desc <span style="color:red;">*</span></label>
+                <input type="text" class="brk-sysdesc" placeholder="e.g. LUNCH" 
+                    value="${data ? data.SYSBRKDESC : ''}">
+            </div>
+            <div class="form-group" style="flex-direction:row; align-items:center; gap:8px; padding-top:20px;">
+                <input type="checkbox" class="brk-nextday" ${data && data.ISNEXTDAY ? 'checked' : ''} 
+                    style="width:auto;">
+                <label style="margin:0; font-size:12px;">Continues to next day</label>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(row);
+}
+
+function removeBreakRow(btn) {
+    const row = btn.closest('.break-row');
+    row.remove();
+    const container = document.getElementById('breakRowsContainer');
+    const remaining = container.querySelectorAll('.break-row');
+    if (remaining.length === 0) {
+        document.getElementById('noBreaksMsg').style.display = 'block';
+    }
+    // Re-number the remaining rows
+    remaining.forEach((r, i) => {
+        r.querySelector('div[style*="Break #"]').textContent = `Break #${i + 1}`;
+        r.dataset.seq = i + 1;
+    });
+}
+
+function clearShiftModal() {
+    ['shiftCode','shiftDesc','shiftLogin','shiftLogout','shiftWorkhrs']
+        .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('shiftCode').disabled = false;
+    document.getElementById('breakRowsContainer').innerHTML = `
+        <p id="noBreaksMsg" style="color:#999; font-size:13px; text-align:center; padding:10px 0;">
+            No breaks added. Click "Add Break" to configure rest periods.
+        </p>`;
+    document.getElementById('shiftModalError').style.display = 'none';
+    breakRowCount = 0;
+}
+
+function openEditShift(code, desc, login, logout, workhrs) {
+    isEditShift = true;
+    editShiftCode = code;
+
+    document.getElementById('shiftModalTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Shift';
+    document.getElementById('shiftCode').value    = code;
+    document.getElementById('shiftCode').disabled = true;
+    document.getElementById('shiftDesc').value    = desc;
+    document.getElementById('shiftLogin').value   = to24Hour(login);
+    document.getElementById('shiftLogout').value  = to24Hour(logout);
+    document.getElementById('shiftWorkhrs').value = workhrs;
+    document.getElementById('confirmShift').textContent = 'Update Shift';
+    document.getElementById('shiftModalError').style.display = 'none';
+
+    // Clear break rows then load existing breaks for this shift
+    document.getElementById('breakRowsContainer').innerHTML = `
+        <p id="noBreaksMsg" style="color:#999; font-size:13px; text-align:center; padding:10px 0;">
+            No breaks added. Click "Add Break" to configure rest periods.
+        </p>`;
+    breakRowCount = 0;
+
+    fetch('http://localhost:3000/api/breaks')
+        .then(r => r.json())
+        .then(breaks => {
+            const shiftBreaks = breaks.filter(b => b.SHIFTCODE === code);
+            shiftBreaks.forEach(b => addBreakRow(b));
+        })
+        .catch(err => console.error('Error loading breaks for edit:', err));
+
+    document.getElementById('shiftModal').style.display = 'flex';
+}
+
+function openEditBreakModal(b) {
+    document.getElementById('editBrkCcode').value    = b.CCODE;
+    document.getElementById('editBrkCcode').dataset.original = b.CCODE;
+    document.getElementById('editBrkSeq').value      = b.BREAKSEQ;
+    document.getElementById('editBrkDesc').value     = b.DESC_TEXT;
+    document.getElementById('editBrkSysDesc').value  = b.SYSBRKDESC;
+    document.getElementById('editBrkOut').value      = to24Hour(b.BREAK_OUT);
+    document.getElementById('editBrkIn').value       = to24Hour(b.BREAK_IN);
+    document.getElementById('editBrkNextDay').checked = b.ISNEXTDAY == 1;
+    document.getElementById('editBrkShiftCode').value = b.SHIFTCODE;
+    document.getElementById('editBreakError').style.display = 'none';
+    document.getElementById('editBreakModal').style.display = 'flex';
+}
+
+async function deleteBreak(ccode, descText) {
+    if (!confirm(`Delete break "${descText}"?`)) return;
+    try {
+        const response = await fetch(`http://localhost:3000/api/breaks/${ccode}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok) {
+            alert('Break deleted.');
+            loadBreaksConfigTable();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Could not connect to server.');
+    }
+}
+
+async function deleteShift(code) {
+    if (!confirm(`Delete shift "${code}"? This will also remove all its break configs.`)) return;
+    try {
+        const response = await fetch(`http://localhost:3000/api/shifts/${code}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (response.ok) {
+            alert('Shift deleted.');
+            loadShiftsTable();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Could not connect to server.');
+    }
+}
+
 function openEditModal(h) {
     isEditMode = true;
     editIdentifiers = { oldMonth: h.MONTH, oldDay: h.DAY, oldBranchCode: h.BRANCHCODE };
@@ -213,6 +394,56 @@ async function loadAssignedScheduleTable() {
     }
 }
 
+async function loadBreaksConfigTable() {
+    const tableBody = document.getElementById('breaksConfigTableBody');
+    if (!tableBody) return;
+    try {
+        const response = await fetch('http://localhost:3000/api/breaks');
+        const breaks = await response.json();
+        tableBody.innerHTML = '';
+
+        if (breaks.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">No break configs found. Create a shift with breaks to populate this table.</td></tr>';
+            return;
+        }
+
+        let lastShift = null;
+        breaks.forEach(b => {
+            const shiftBadgeClass = {
+                'Morning Shift':   'shift-morning',
+                'Afternoon Shift': 'shift-afternoon',
+                'Night Shift':     'shift-night'
+            }[b.SHIFT_NAME] || '';
+
+            const shiftCell = b.SHIFTCODE !== lastShift
+                ? `<span class="badge ${shiftBadgeClass}">${b.SHIFT_NAME || b.SHIFTCODE}</span>`
+                : '<span style="color:#ccc;">—</span>';
+            lastShift = b.SHIFTCODE;
+
+            const bJson = JSON.stringify(b).replace(/"/g, '&quot;');
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${shiftCell}</td>
+                    <td>${b.BREAKSEQ}</td>
+                    <td>${b.DESC_TEXT}</td>
+                    <td>${b.BREAK_OUT}</td>
+                    <td>${b.BREAK_IN}</td>
+                    <td>${b.ISNEXTDAY ? '<span class="status-pill">Yes</span>' : '—'}</td>
+                    <td style="text-align:center;">
+                        <button class="action-icon edit" onclick='openEditBreakModal(${bJson})'>
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-icon delete" onclick="deleteBreak('${b.CCODE}','${b.DESC_TEXT}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error('Error loading break configs:', err);
+    }
+}
+
 async function loadHolidaysFromDB() {
     const tableBody = document.getElementById('holidayTableBody');
     if (!tableBody) return;
@@ -300,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('breaksTableBody')) loadBreaksTable();
     if (document.getElementById('editSchedule')) loadShiftDropdown();
     if (document.getElementById('assignedScheduleBody')) loadAssignedScheduleTable();
+    if (document.getElementById('breaksConfigTableBody')) loadBreaksConfigTable();
  
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');
@@ -401,28 +633,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const openAddShiftBtn = document.getElementById('openAddShiftModal');
     if (shiftModal && openAddShiftBtn) {
 
+        // Open for Add
         openAddShiftBtn.addEventListener('click', () => {
             isEditShift = false;
             editShiftCode = '';
-            document.getElementById('shiftModalTitle').innerHTML = '<i class="fas fa-clock"></i> Add New Shift';
-            document.getElementById('shiftCode').disabled = false;
+            document.getElementById('shiftModalTitle').innerHTML = '<i class="fas fa-clock"></i> Create New Shift';
             document.getElementById('confirmShift').textContent = 'Save Shift';
-            ['shiftCode','shiftDesc','shiftLogin','shiftLogout','shiftWorkhrs']
-                .forEach(id => document.getElementById(id).value = '');
-            document.getElementById('shiftModalError').style.display = 'none';
+            clearShiftModal();
             shiftModal.style.display = 'flex';
         });
+
+        document.getElementById('addBreakRowBtn').addEventListener('click', () => addBreakRow());
 
         document.getElementById('closeShiftModal').addEventListener('click', () => shiftModal.style.display = 'none');
         document.getElementById('cancelShift').addEventListener('click', () => shiftModal.style.display = 'none');
         shiftModal.addEventListener('click', (e) => { if (e.target === shiftModal) shiftModal.style.display = 'none'; });
 
         document.getElementById('confirmShift').addEventListener('click', async () => {
-            const code     = document.getElementById('shiftCode').value.trim();
-            const desc     = document.getElementById('shiftDesc').value.trim();
-            const login    = document.getElementById('shiftLogin').value;
-            const logout   = document.getElementById('shiftLogout').value;
-            const workhrs  = document.getElementById('shiftWorkhrs').value;
+            const code    = document.getElementById('shiftCode').value.trim();
+            const desc    = document.getElementById('shiftDesc').value.trim();
+            const login   = document.getElementById('shiftLogin').value;
+            const logout  = document.getElementById('shiftLogout').value;
+            const workhrs = document.getElementById('shiftWorkhrs').value;
             const errorDiv = document.getElementById('shiftModalError');
 
             if (!code || !desc || !login || !logout || !workhrs) {
@@ -431,30 +663,146 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             errorDiv.style.display = 'none';
 
-            const payload = { ccode: code, cdesc: desc, clogin: login, clogout: logout, workhrs: parseFloat(workhrs) };
-            const url    = isEditShift ? `http://localhost:3000/api/shifts/${editShiftCode}` : 'http://localhost:3000/api/shifts';
-            const method = isEditShift ? 'PUT' : 'POST';
+            // Collect break rows
+            const breakRows = document.querySelectorAll('#breakRowsContainer .break-row');
+            const breaks = [];
+            let breakValid = true;
+
+            breakRows.forEach((row, i) => {
+                const bCcode   = row.querySelector('.brk-ccode').value.trim();
+                const bDesc    = row.querySelector('.brk-desc').value.trim();
+                const bOut     = row.querySelector('.brk-out').value;
+                const bIn      = row.querySelector('.brk-in').value;
+                const bSysDesc = row.querySelector('.brk-sysdesc').value.trim();
+                const bNextDay = row.querySelector('.brk-nextday').checked;
+
+                if (!bCcode || !bDesc || !bOut || !bIn || !bSysDesc) {
+                    breakValid = false;
+                    row.style.borderColor = '#e74c3c';
+                } else {
+                    row.style.borderColor = '#e0e0e0';
+                    breaks.push({
+                        ccode:     bCcode,
+                        descText:  bDesc,
+                        breakOut:  to12Hour(bOut),
+                        breakIn:   to12Hour(bIn),
+                        sysBrkDesc: bSysDesc,
+                        isNextDay: bNextDay,
+                        shiftCode: code,
+                        breakSeq:  i + 1
+                    });
+                }
+            });
+
+            if (!breakValid) {
+                errorDiv.textContent = 'Please fill in all break fields.';
+                errorDiv.style.display = 'block';
+                return;
+            }
 
             try {
-                const response = await fetch(url, {
-                    method,
+                // 1. Save or update the shift
+                const shiftPayload = { ccode: code, cdesc: desc, clogin: to12Hour(login), clogout: to12Hour(logout), workhrs: parseFloat(workhrs) };
+                const shiftUrl    = isEditShift ? `http://localhost:3000/api/shifts/${editShiftCode}` : 'http://localhost:3000/api/shifts';
+                const shiftMethod = isEditShift ? 'PUT' : 'POST';
+
+                const shiftRes = await fetch(shiftUrl, {
+                    method: shiftMethod,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(shiftPayload)
                 });
-                const result = await response.json();
-                if (response.ok) {
-                    alert(isEditShift ? 'Shift updated!' : 'Shift added!');
-                    shiftModal.style.display = 'none';
-                    loadShiftsTable();
-                    if (document.getElementById('editSchedule')) loadShiftDropdown();
-                } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                if (!shiftRes.ok) {
+                    const err = await shiftRes.json();
+                    alert('Error saving shift: ' + (err.error || 'Unknown error'));
+                    return;
                 }
+
+                // 2. If editing, delete old breaks first then re-insert
+                if (isEditShift) {
+                    await fetch(`http://localhost:3000/api/breaks/shift/${editShiftCode}`, { method: 'DELETE' });
+                }
+
+                // 3. Save each break
+                for (const b of breaks) {
+                    const bRes = await fetch('http://localhost:3000/api/breaks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(b)
+                    });
+                    if (!bRes.ok) {
+                        const err = await bRes.json();
+                        alert('Error saving break: ' + (err.error || 'Unknown error'));
+                        return;
+                    }
+                }
+
+                alert(isEditShift ? 'Shift updated!' : 'Shift created!');
+                shiftModal.style.display = 'none';
+                loadShiftsTable();
+                loadBreaksConfigTable();
+
             } catch (err) {
                 alert('Could not connect to server.');
             }
         });
     }
+
+    // EDIT BREAK MODAL
+    const editBreakModal = document.getElementById('editBreakModal');
+    if (editBreakModal) {
+        document.getElementById('closeEditBreakModal').addEventListener('click', () => editBreakModal.style.display = 'none');
+        document.getElementById('cancelEditBreak').addEventListener('click', () => editBreakModal.style.display = 'none');
+        editBreakModal.addEventListener('click', (e) => { if (e.target === editBreakModal) editBreakModal.style.display = 'none'; });
+
+        document.getElementById('confirmEditBreak').addEventListener('click', async () => {
+            const ccodeInput = document.getElementById('editBrkCcode');
+            const oldCcode   = ccodeInput.dataset.original;
+            const newCcode   = ccodeInput.value.trim();
+            const desc       = document.getElementById('editBrkDesc').value.trim();
+            const sysDesc    = document.getElementById('editBrkSysDesc').value.trim();
+            const breakOut   = document.getElementById('editBrkOut').value;
+            const breakIn    = document.getElementById('editBrkIn').value;
+            const seq        = document.getElementById('editBrkSeq').value;
+            const nextDay    = document.getElementById('editBrkNextDay').checked;
+            const shiftCode  = document.getElementById('editBrkShiftCode').value;
+            const errorDiv   = document.getElementById('editBreakError');
+
+            if (!newCcode || !desc || !sysDesc || !breakOut || !breakIn || !seq) {
+                errorDiv.style.display = 'block';
+                return;
+            }
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/breaks/${oldCcode}`, {  // <-- fixed
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        newCcode,        // <-- added
+                        descText:   desc,
+                        breakOut:   to12Hour(breakOut),
+                        breakIn:    to12Hour(breakIn),
+                        isNextDay:  nextDay,
+                        sysBrkDesc: sysDesc,
+                        breakSeq:   parseInt(seq),
+                        shiftCode        // <-- added
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Break updated!');
+                    editBreakModal.style.display = 'none';
+                    loadBreaksConfigTable();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Edit break error:', err);
+                alert('Could not connect to server.');
+            }
+        });
+    }
+
 
     // HOLIDAY MODAL TOGGLE
     const openHolidayBtn = document.getElementById('openHolidayModal');

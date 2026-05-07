@@ -234,6 +234,94 @@ app.delete('/api/shifts/:id', (req, res) => {
     });
 });
 
+// GET ALL BREAKS
+app.get('/api/breaks', (req, res) => {
+    const sql = `
+        SELECT b.CCODE, b.DESC_TEXT, b.BREAK_OUT, b.BREAK_IN,
+               b.ISNEXTDAY, b.SYSBRKDESC, b.SHIFTCODE,
+               b.BREAKSEQ, s.CDESC AS SHIFT_NAME
+        FROM breaksched b
+        LEFT JOIN shiftdb s ON b.SHIFTCODE = s.CCODE
+        ORDER BY b.SHIFTCODE, b.BREAKSEQ
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        res.json(results);
+    });
+});
+
+// ADD BREAK
+app.post('/api/breaks', (req, res) => {
+    const { ccode, descText, breakOut, breakIn, isNextDay, sysBrkDesc, shiftCode, breakSeq } = req.body;
+    const sql = `
+        INSERT INTO breaksched 
+            (CCODE, DESC_TEXT, BREAK_OUT, BREAK_IN, ISNEXTDAY, SYSBRKDESC, SHIFTCODE, BREAKSEQ)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.query(sql, [ccode, descText, breakOut, breakIn, isNextDay ? 1 : 0, sysBrkDesc, shiftCode, breakSeq], (err) => {
+        if (err) {
+            console.error("MYSQL INSERT ERROR:", err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
+        res.json({ message: "Break added successfully." });
+    });
+});
+
+// UPDATE BREAK BY CCODE
+app.put('/api/breaks/:ccode', (req, res) => {
+    const { newCcode, descText, breakOut, breakIn, isNextDay, sysBrkDesc, breakSeq, shiftCode } = req.body;
+    const oldCcode = req.params.ccode;
+
+    // If code hasn't changed, just update normally
+    if (newCcode === oldCcode) {
+        const sql = `
+            UPDATE breaksched
+            SET DESC_TEXT = ?, BREAK_OUT = ?, BREAK_IN = ?,
+                ISNEXTDAY = ?, SYSBRKDESC = ?, BREAKSEQ = ?
+            WHERE CCODE = ?
+        `;
+        db.query(sql, [descText, breakOut, breakIn, isNextDay ? 1 : 0, sysBrkDesc, breakSeq, oldCcode], (err) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            res.json({ message: "Break updated successfully." });
+        });
+    } else {
+        // Code changed — delete old, insert new
+        const deleteSql = "DELETE FROM breaksched WHERE CCODE = ?";
+        db.query(deleteSql, [oldCcode], (err) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+
+            const insertSql = `
+                INSERT INTO breaksched 
+                    (CCODE, DESC_TEXT, BREAK_OUT, BREAK_IN, ISNEXTDAY, SYSBRKDESC, SHIFTCODE, BREAKSEQ)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            db.query(insertSql, [newCcode, descText, breakOut, breakIn, isNextDay ? 1 : 0, sysBrkDesc, shiftCode, breakSeq], (err) => {
+                if (err) return res.status(500).json({ error: err.sqlMessage });
+                res.json({ message: "Break updated successfully." });
+            });
+        });
+    }
+});
+
+// DELETE BREAK BY CCODE
+app.delete('/api/breaks/:ccode', (req, res) => {
+    const sql = "DELETE FROM breaksched WHERE CCODE = ?";
+    db.query(sql, [req.params.ccode], (err, result) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (result.affectedRows === 0) return res.status(404).json({ error: "Break not found." });
+        res.json({ message: "Break deleted successfully." });
+    });
+});
+
+// DELETE ALL BREAKS FOR A SHIFT (used when re-saving breaks on edit)
+app.delete('/api/breaks/shift/:shiftCode', (req, res) => {
+    const sql = "DELETE FROM breaksched WHERE SHIFTCODE = ?";
+    db.query(sql, [req.params.shiftCode], (err) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        res.json({ message: "Breaks cleared." });
+    });
+});
+
 // 5. GET HOLIDAYS (For Holiday Lookup Page)
 app.get('/api/holidays', (req, res) => {
     const sql = "SELECT * FROM holiday ORDER BY MONTH, DAY";

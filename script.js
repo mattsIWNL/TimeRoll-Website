@@ -1073,5 +1073,47 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { alert("No records found."); resultsDiv.style.display = 'none'; }
         });
     }
- 
+    
+    // SYSTEM CONFIGURATION - Timezone Save
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const timezoneSelect = document.getElementById('timezoneSelect');
+    if (saveConfigBtn && timezoneSelect) {
+
+        // On page load, restore saved timezone and set the dropdown
+        const savedTZ = localStorage.getItem('sysTimezone') || 'Asia/Manila';
+        timezoneSelect.value = savedTZ;
+
+        // Update the label next to the clock
+        const updateTimezoneLabel = (tz) => {
+            const labels = {
+                'Asia/Manila':     'Philippine Standard Time (UTC+8)',
+                'Singapore':       'Singapore Standard Time (UTC+8)',
+                'UTC':             'Coordinated Universal Time (UTC+0)',
+                'America/New_York':'Eastern Standard Time (UTC-5)',
+                'Europe/London':   'Greenwich Mean Time (UTC+0)'
+            };
+            const display = document.getElementById('activeTimezoneDisplay');
+            if (display) display.textContent = labels[tz] || tz;
+        };
+
+        updateTimezoneLabel(savedTZ); // apply on page load
+
+        saveConfigBtn.addEventListener('click', () => {
+            const selectedTZ = timezoneSelect.value;
+            localStorage.setItem('sysTimezone', selectedTZ);
+
+            updateTimezoneLabel(selectedTZ);
+
+            // Flash the success message
+            const msg = document.getElementById('configMessage');
+            if (msg) {
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 3000);
+            }
+
+            // Force an immediate clock refresh
+            updateTime();
+        });
+    }
+
 }); // <-- DOMContentLoaded closes HERE

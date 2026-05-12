@@ -1116,4 +1116,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // CHANGE PROCESS DATE
+    const saveProcessDateBtn = document.getElementById('saveProcessDateBtn');
+    const processDateInput = document.getElementById('processDateInput');
+    if (saveProcessDateBtn && processDateInput) {
+
+        // Helper: format a date string (YYYY-MM-DD) into a readable label
+        const formatProcessDate = (dateStr) => {
+            if (!dateStr) return 'No date set';
+            const d = new Date(dateStr + 'T00:00:00'); // force local time, no UTC shift
+            return d.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+        };
+
+        // On page load: restore saved process date
+        const savedDate = localStorage.getItem('processDate');
+        if (savedDate) {
+            processDateInput.value = savedDate;
+        }
+
+        // Update the display card
+        const updateProcessDateDisplay = (dateStr) => {
+            const display = document.getElementById('currentProcessDateDisplay');
+            if (display) {
+                display.textContent = dateStr ? formatProcessDate(dateStr) : 'Not set — using system date';
+            }
+        };
+
+        updateProcessDateDisplay(savedDate); // apply on page load
+
+        saveProcessDateBtn.addEventListener('click', () => {
+            const selectedDate = processDateInput.value; // "YYYY-MM-DD"
+
+            if (!selectedDate) {
+                alert('Please select a date before saving.');
+                return;
+            }
+
+            localStorage.setItem('processDate', selectedDate);
+            updateProcessDateDisplay(selectedDate);
+
+            // Flash success message
+            const msg = document.getElementById('processDateMessage');
+            if (msg) {
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 3000);
+            }
+
+            // Immediately update the navbar clock on this page too
+            updateTime();
+        });
+    }
+
 }); // <-- DOMContentLoaded closes HERE

@@ -407,6 +407,113 @@ app.get('/api/dtr/:empcode', (req, res) => {
     });
 });
 
+// POST /api/login  — authenticate a user against the users table
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+ 
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required.' });
+    }
+ 
+    const sql = 'SELECT id, username, role FROM users WHERE username = ? AND password = ?';
+    db.query(sql, [username, password], (err, results) => {
+        if (err) {
+            console.error('Login query error:', err.sqlMessage);
+            return res.status(500).json({ error: 'Server error.' });
+        }
+        if (results.length === 0) {
+            return res.status(401).json({ error: 'Invalid username or password.' });
+        }
+        // Return role so the frontend can store it in localStorage
+        const user = results[0];
+        res.json({ message: 'Login successful.', username: user.username, role: user.role });
+    });
+});
+ 
+ 
+// POST /api/users  — admin creates a new user account
+// Requires adminUser + adminPass in the body to verify the requester is an admin
+app.post('/api/users', (req, res) => {
+    const { adminUser, adminPass, username, password, role } = req.body;
+ 
+    if (!adminUser || !adminPass || !username || !password || !role) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
+ 
+    // 1. Verify admin credentials
+    const verifySql = "SELECT role FROM users WHERE username = ? AND password = ?";
+    db.query(verifySql, [adminUser, adminPass], (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (results.length === 0) {
+            return res.status(401).json({ error: 'Admin verification failed. Check your credentials.' });
+        }
+        if (results[0].role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can create new accounts.' });
+        }
+ 
+        // 2. Check if username already exists
+        const checkSql = "SELECT id FROM users WHERE username = ?";
+        db.query(checkSql, [username], (err, existing) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (existing.length > 0) {
+                return res.status(409).json({ error: `Username "${username}" is already taken.` });
+            }
+ 
+            // 3. Insert new user (role defaults to 'admin' in DB but we set it explicitly here)
+            const insertSql = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+            db.query(insertSql, [username, password, role], (err) => {
+                if (err) {
+                    console.error('Insert user error:', err.sqlMessage);
+                    return res.status(500).json({ error: err.sqlMessage });
+                }
+                res.json({ message: `Account "${username}" created successfully.` });
+            });
+        });
+    });
+});
+ 
+ 
+// GET /api/users  — list all users (admin only, verified server-side)
+// Usage: GET /api/users?adminUser=xxx&adminPass=yyy
+app.get('/api/users', (req, res) => {
+    const { adminUser, adminPass } = req.query;
+ 
+    const verifySql = "SELECT role FROM users WHERE username = ? AND password = ?";
+    db.query(verifySql, [adminUser, adminPass], (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (results.length === 0 || results[0].role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required.' });
+        }
+ 
+        const sql = "SELECT id, username, role FROM users ORDER BY id DESC";
+        db.query(sql, (err, users) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            res.json(users);
+        });
+    });
+});
+ 
+ 
+// DELETE /api/users/:id  — admin deletes a user account
+app.delete('/api/users/:id', (req, res) => {
+    const { adminUser, adminPass } = req.body;
+ 
+    const verifySql = "SELECT role FROM users WHERE username = ? AND password = ?";
+    db.query(verifySql, [adminUser, adminPass], (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (results.length === 0 || results[0].role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required.' });
+        }
+ 
+        const sql = "DELETE FROM users WHERE id = ?";
+        db.query(sql, [req.params.id], (err, result) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (result.affectedRows === 0) return res.status(404).json({ error: 'User not found.' });
+            res.json({ message: 'User deleted.' });
+        });
+    });
+});
+
 // 10. START SERVER
 app.listen(3000, () => {
     console.log("TimeRoll Backend running on http://localhost:3000");

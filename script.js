@@ -508,13 +508,29 @@ function updateTime() {
         const savedTZ = localStorage.getItem('sysTimezone') || 'Asia/Manila';
         const savedProcessDate = localStorage.getItem('processDate');
         const now = new Date();
+        
         clockElement.textContent = now.toLocaleTimeString('en-US', { timeZone: savedTZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        
         if (savedProcessDate) {
             const pDate = new Date(savedProcessDate + 'T00:00:00');
             dateElement.textContent = pDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         } else {
             dateElement.textContent = now.toLocaleDateString('en-US', { timeZone: savedTZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
+        
+        const tzLabels = {
+            'Asia/Manila':      'Philippine Standard Time',
+            'Singapore':        'Singapore Standard Time',
+            'UTC':              'Coordinated Universal Time',
+            'America/New_York': 'Eastern Standard Time',
+            'Europe/London':    'Greenwich Mean Time'
+        };
+        const homeDisplay = document.getElementById('homeTimezoneDisplay');
+        if (homeDisplay) homeDisplay.textContent = tzLabels[savedTZ] || savedTZ;
+
+        const activeDisplay = document.getElementById('activeTimezoneDisplay');
+        if (activeDisplay) activeDisplay.textContent = tzLabels[savedTZ] || savedTZ;
+        
     }
 }
  

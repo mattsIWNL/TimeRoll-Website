@@ -232,8 +232,23 @@ async function deleteShift(code) {
 }
 
 // --- 1. GATEKEEPER ---
-if (!localStorage.getItem('isLoggedIn') && !window.location.pathname.includes('login.html')) {
+const isLoggedIn  = localStorage.getItem('isLoggedIn');
+const currentRole = localStorage.getItem('userRole');
+const onLoginPage = window.location.pathname.includes('login.html');
+
+if (!isLoggedIn && !onLoginPage) {
     window.location.href = 'login.html';
+}
+
+function isAdmin() {
+    return localStorage.getItem('userRole') === 'admin';
+}
+
+function requireAdmin() {
+    if (!isAdmin()) {
+        alert('Access denied. This section requires admin privileges.');
+        window.location.href = 'index.html';
+    }
 }
  
 // --- 2. GLOBAL FUNCTIONS ---
@@ -530,7 +545,7 @@ function updateTime() {
 
         const activeDisplay = document.getElementById('activeTimezoneDisplay');
         if (activeDisplay) activeDisplay.textContent = tzLabels[savedTZ] || savedTZ;
-        
+
     }
 }
  
@@ -557,6 +572,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cancelLogout').addEventListener('click', () => { logoutModal.style.display = 'none'; });
         document.getElementById('confirmLogout').addEventListener('click', () => {
             localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('username');
             window.location.href = 'login.html';
         });
     }

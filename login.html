@@ -5,38 +5,518 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - TimeRoll™️</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--primary-blue);
+        }
+
+        .login-wrapper {
+            width: 380px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .login-card {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .login-brand h2 {
+            font-size: 1.8rem;
+            color: var(--primary-blue);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .login-brand p {
+            font-size: 0.78rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .login-card hr {
+            margin: 20px 0;
+        }
+
+        .login-card .form-group {
+            text-align: left;
+            margin-bottom: 16px;
+        }
+
+        .login-card .form-group label {
+            font-size: 0.85rem;
+            color: #555;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .login-card .form-group input {
+            padding: 11px 12px;
+            font-size: 0.95rem;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 13px;
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 6px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .btn-login:hover  { opacity: 0.85; }
+        .btn-login:active { transform: scale(0.98); }
+
+        .login-error {
+            color: #dc3545;
+            font-size: 0.85rem;
+            margin-top: 12px;
+            display: none;
+            padding: 8px 12px;
+            background: #fff5f5;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            text-align: left;
+        }
+
+        .admin-link {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .admin-link button {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.45);
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .admin-link button:hover { color: rgba(255,255,255,0.8); }
+
+        .footer-note {
+            text-align: center;
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.25);
+            margin-top: 20px;
+        }
+
+        /* ── CREATE ACCOUNT MODAL ── */
+        #createAccountModal {
+            display: none;
+        }
+
+        #createAccountModal.open {
+            display: flex;
+        }
+
+        .create-modal-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 30px;
+            width: 460px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease;
+            text-align: left;
+        }
+
+        .modal-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .modal-top-bar h3 {
+            color: var(--primary-blue);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            color: #999;
+            cursor: pointer;
+            padding: 2px 7px;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+            line-height: 1;
+        }
+
+        .modal-close-btn:hover { color: #dc3545; background: #fff0f0; }
+
+        .section-fieldset {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px 18px;
+            margin-bottom: 14px;
+        }
+
+        .section-fieldset legend {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 6px;
+        }
+
+        .section-fieldset .form-group {
+            margin-bottom: 12px;
+        }
+
+        .section-fieldset .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-fieldset .form-group label {
+            font-size: 0.82rem;
+            margin-bottom: 5px;
+        }
+
+        .section-fieldset .form-group input,
+        .section-fieldset .form-group select {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+
+        .strength-bar {
+            height: 3px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-modal-cancel {
+            flex: 1;
+            padding: 11px;
+            background: #e0e0e0;
+            color: #444;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .btn-modal-cancel:hover { background: #d0d0d0; }
+
+        .btn-modal-create {
+            flex: 2;
+            padding: 11px;
+            background: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .btn-modal-create:hover { opacity: 0.85; }
+
+        .modal-feedback {
+            font-size: 0.82rem;
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .modal-feedback.error {
+            color: #dc3545;
+            background: #fff5f5;
+            border: 1px solid #f5c6cb;
+        }
+
+        .modal-feedback.success {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
 </head>
-<body style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000042;">
+<body>
 
-    <div class="card" style="width: 350px; text-align: center; padding: 40px;">
-        <h2 style="color: #000042; margin-bottom: 10px;">TimeRoll™️</h2>
-        <p style="font-size: 0.8rem; color: #666; margin-bottom: 30px;">Par Excellence Search Consulting Inc.</p>
-        
-        <div class="form-group" style="text-align: left;">
-            <label>Username</label>
-            <input type="text" id="loginUser" placeholder="Enter username">
-        </div>
-        <div class="form-group" style="text-align: left;">
-            <label>Password</label>
-            <input type="password" id="loginPass" placeholder="Enter password">
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-brand">
+                <h2>TimeRoll™️</h2>
+                <p>Par Excellence Search Consulting Inc.</p>
+            </div>
+
+            <hr>
+
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+            </div>
+
+            <button class="btn-login" id="btnLogin">
+                <i class="fas fa-sign-in-alt"></i>&nbsp; Login
+            </button>
+
+            <div class="login-error" id="loginError"></div>
         </div>
 
-        <button id="btnLogin" class="btn check-out" style="width: 100%; margin-top: 20px; padding: 15px;">Login</button>
-        <p id="loginError" style="color: red; display: none; margin-top: 15px; font-size: 0.9rem;">Invalid credentials.</p>
+        <div class="admin-link">
+            <button id="openCreateAccount">
+                <i class="fas fa-user-shield"></i> Admin: Create New Account
+            </button>
+        </div>
+
+        <div class="footer-note">© 2026 TimeRoll™️ · All rights reserved</div>
     </div>
 
-    <script>
-        // Simple Login Logic
-        document.getElementById('btnLogin').addEventListener('click', () => {
-            const user = document.getElementById('loginUser').value;
-            const pass = document.getElementById('loginPass').value;
 
-            // For demo: User is 'admin' and Pass is '123'
-            if (user === 'admin' && pass === '123') {
-                localStorage.setItem('isLoggedIn', 'true');
-                window.location.href = 'index.html';
-            } else {
-                document.getElementById('loginError').style.display = 'block';
+    <!-- ── CREATE ACCOUNT MODAL ── -->
+    <div class="modal-overlay" id="createAccountModal">
+        <div class="create-modal-card">
+
+            <div class="modal-top-bar">
+                <h3><i class="fas fa-user-plus"></i> Create New User Account</h3>
+                <button class="modal-close-btn" id="closeCreateModal" title="Close">✕</button>
+            </div>
+            <p class="modal-subtitle">Verify your admin credentials first, then fill in the new account details.</p>
+
+            <!-- Admin verification -->
+            <fieldset class="section-fieldset">
+                <legend>Admin Verification</legend>
+                <div class="form-group">
+                    <label>Admin Username</label>
+                    <input type="text" id="adminVerifyUser" placeholder="Your admin username" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Admin Password</label>
+                    <input type="password" id="adminVerifyPass" placeholder="Your admin password" autocomplete="off">
+                </div>
+            </fieldset>
+
+            <!-- New account details -->
+            <fieldset class="section-fieldset">
+                <legend>New Account Details</legend>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="newAccUsername" placeholder="e.g. jdelacruz" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="newAccPassword" placeholder="Set a password" autocomplete="new-password">
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthFill"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="newAccRole">
+                        <option value="employee">Employee — Check-in/out, DTR, Schedules</option>
+                        <option value="admin">Admin — Full system access</option>
+                    </select>
+                </div>
+            </fieldset>
+
+            <div class="modal-feedback error"   id="createError"></div>
+            <div class="modal-feedback success" id="createSuccess"></div>
+
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="cancelCreateModal">Cancel</button>
+                <button class="btn-modal-create" id="confirmCreateAccount">
+                    <i class="fas fa-user-check"></i> Create Account
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <script>
+        const API = 'http://localhost:3000';
+
+        // ── LOGIN ──
+        document.getElementById('btnLogin').addEventListener('click', handleLogin);
+        document.getElementById('loginPass').addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleLogin();
+        });
+
+        async function handleLogin() {
+            const username = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value;
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.style.display = 'none';
+
+            if (!username || !password) {
+                errorDiv.textContent = 'Please enter your username and password.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('userRole',   data.role);
+                    localStorage.setItem('username',   data.username);
+                    window.location.href = 'index.html';
+                } else {
+                    errorDiv.textContent = data.error || 'Invalid username or password.';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Could not connect to server. Is Node running?';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // ── CREATE ACCOUNT MODAL ──
+        const modal = document.getElementById('createAccountModal');
+
+        document.getElementById('openCreateAccount').addEventListener('click', () => {
+            clearCreateForm();
+            modal.style.display = 'flex';
+        });
+
+        function closeModal() {
+            modal.style.display = 'none';
+            clearCreateForm();
+        }
+
+        document.getElementById('closeCreateModal').addEventListener('click', closeModal);
+        document.getElementById('cancelCreateModal').addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+        function clearCreateForm() {
+            ['adminVerifyUser', 'adminVerifyPass', 'newAccUsername', 'newAccPassword'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('newAccRole').value          = 'employee';
+            document.getElementById('createError').style.display   = 'none';
+            document.getElementById('createSuccess').style.display = 'none';
+            document.getElementById('strengthFill').style.width    = '0%';
+        }
+
+        // Password strength bar
+        document.getElementById('newAccPassword').addEventListener('input', function () {
+            const val  = this.value;
+            const fill = document.getElementById('strengthFill');
+            let strength = 0;
+            if (val.length >= 6)  strength++;
+            if (val.length >= 10) strength++;
+            if (/[A-Z]/.test(val) && /[0-9]/.test(val)) strength++;
+            if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+            const widths = ['0%', '25%', '50%', '75%', '100%'];
+            const colors = ['#eee', '#dc3545', '#ffc107', '#28a745', '#006400'];
+            fill.style.width      = widths[strength];
+            fill.style.background = colors[strength];
+        });
+
+        // Create account submit
+        document.getElementById('confirmCreateAccount').addEventListener('click', async () => {
+            const adminUser  = document.getElementById('adminVerifyUser').value.trim();
+            const adminPass  = document.getElementById('adminVerifyPass').value;
+            const newUser    = document.getElementById('newAccUsername').value.trim();
+            const newPass    = document.getElementById('newAccPassword').value;
+            const role       = document.getElementById('newAccRole').value;
+            const errorDiv   = document.getElementById('createError');
+            const successDiv = document.getElementById('createSuccess');
+
+            errorDiv.style.display   = 'none';
+            successDiv.style.display = 'none';
+
+            if (!adminUser || !adminPass) {
+                errorDiv.textContent   = 'Please enter your admin credentials to verify.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (!newUser || !newPass) {
+                errorDiv.textContent   = 'Please fill in all new account fields.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (newPass.length < 6) {
+                errorDiv.textContent   = 'Password must be at least 6 characters.';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminUser, adminPass, username: newUser, password: newPass, role })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    successDiv.textContent   = `✓ Account "${newUser}" created successfully as ${role}.`;
+                    successDiv.style.display = 'block';
+                    // Clear only new account fields; keep admin fields in case they create another
+                    document.getElementById('newAccUsername').value = '';
+                    document.getElementById('newAccPassword').value = '';
+                    document.getElementById('newAccRole').value     = 'employee';
+                    document.getElementById('strengthFill').style.width = '0%';
+                } else {
+                    errorDiv.textContent   = data.error || 'Failed to create account.';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (err) {
+                errorDiv.textContent   = 'Could not connect to server. Is Node running?';
+                errorDiv.style.display = 'block';
             }
         });
     </script>

@@ -46,7 +46,7 @@
                 <li><a href="#" class="exit-btn">Exit</a></li>
             </ul>
             <div class="user-profile">
-                <span class="username">Admin_User</span>
+                <span class="username"></span>
                 <i class="fas fa-user-circle"></i>
             </div>
         </div>
@@ -121,6 +121,13 @@
 
         </main>
     </div>
+
+    <script>
+        if (localStorage.getItem('userRole') !== 'admin') {
+            alert('Access denied. Admin privileges required.');
+            window.location.href = 'index.html';
+        }
+    </script>
 
     <script src="script.js"></script>
 

@@ -563,6 +563,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('editSchedule')) loadShiftDropdown();
     if (document.getElementById('assignedScheduleBody')) loadAssignedScheduleTable();
     if (document.getElementById('breaksConfigTableBody')) loadBreaksConfigTable();
+    
+    document.querySelectorAll('.username').forEach(el => {
+        el.textContent = localStorage.getItem('username') || 'User';
+    });
+    
+     if (!isAdmin()) {
+        document.querySelectorAll('.nav-links .dropdown').forEach(drop => {
+            const links = drop.querySelectorAll('.dropdown-content a');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                const adminPages = ['company.html','employee.html','schedule.html',
+                                    'configuration.html','holiday-lookup.html',
+                                    'change-process-date.html','convert-logs.html',
+                                    'upload.html','generate.html'];
+                if (adminPages.some(p => href && href.includes(p))) {
+                    link.style.display = 'none';
+                }
+            });
+        });
+    }
  
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');

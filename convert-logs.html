@@ -46,7 +46,7 @@
                 <li><a href="#" class="exit-btn">Exit</a></li>
             </ul>
             <div class="user-profile">
-                <span class="username">Admin_User</span>
+                <span class="username"></span>
                 <i class="fas fa-user-circle"></i>
             </div>
         </div>
@@ -90,13 +90,13 @@
                 <tbody>
                     <tr>
                         <td>Attendance_Jan_Week1.xlsx</td>
-                        <td>Admin_User</td>
+                        <td></td>
                         <td>Jan 24, 2025 09:15 AM</td>
                         <td><span class="status-pill">Completed</span></td>
                     </tr>
                     <tr>
                         <td>Biometric_Logs_BranchA.xls</td>
-                        <td>Admin_User</td>
+                        <td></td>
                         <td>Jan 24, 2025 10:30 AM</td>
                         <td><span class="badge shift-morning">Processing...</span></td>
                     </tr>
@@ -104,6 +104,13 @@
             </table>
         </div>
     </main>
+
+    <script>
+        if (localStorage.getItem('userRole') !== 'admin') {
+            alert('Access denied. Admin privileges required.');
+            window.location.href = 'index.html';
+        }
+    </script>
 
     <script src="script.js"></script>
 

@@ -584,39 +584,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
  
-        // ── CHECK IN / CHECK OUT ──
-    const btnCheckIn  = document.getElementById('btnCheckIn');
-    const btnCheckOut = document.getElementById('btnCheckOut');
+    // ── CHECK IN / CHECK OUT  (multi-session version) ──────────────
+    const btnCheckIn        = document.getElementById('btnCheckIn');
+    const btnCheckOut       = document.getElementById('btnCheckOut');
     const attendanceStatus  = document.getElementById('attendanceStatus');
     const clockInDisplay    = document.getElementById('clockInDisplay');
     const attendanceMessage = document.getElementById('attendanceMessage');
 
     if (btnCheckIn && btnCheckOut) {
-        const empCode   = localStorage.getItem('empCode');
-        const userRole  = localStorage.getItem('userRole');
+        const empCode  = localStorage.getItem('empCode');
+        const userRole = localStorage.getItem('userRole');
 
-        // Admins don't check in/out
         if (userRole === 'admin') {
             attendanceStatus.textContent = 'N/A (Admin)';
             btnCheckIn.disabled  = true;
             btnCheckOut.disabled = true;
             btnCheckIn.style.opacity  = '0.4';
             btnCheckOut.style.opacity = '0.4';
+
         } else if (!empCode) {
             attendanceStatus.textContent = 'Not linked to employee record';
             btnCheckIn.disabled  = true;
             btnCheckOut.disabled = true;
             btnCheckIn.style.opacity  = '0.4';
             btnCheckOut.style.opacity = '0.4';
+
         } else {
-            // Restore status from localStorage
-            const isClockedIn  = localStorage.getItem('isClockedIn') === 'true';
-            const clockInTime  = localStorage.getItem('clockInTime');
 
-            updateAttendanceUI(isClockedIn, clockInTime);
+            // Always fetch live status from server on load
+            fetchAndSyncStatus();
 
-            // CHECK IN
             btnCheckIn.addEventListener('click', async () => {
+                btnCheckIn.disabled = true;
                 try {
                     const res  = await fetch('http://localhost:3000/api/dtr/checkin', {
                         method: 'POST',
@@ -625,21 +624,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                        localStorage.setItem('isClockedIn', 'true');
-                        localStorage.setItem('clockInTime', now);
-                        updateAttendanceUI(true, now);
                         showAttendanceMsg(data.message, 'success');
+                        await fetchAndSyncStatus();
                     } else {
                         showAttendanceMsg(data.error || 'Check-in failed.', 'error');
+                        btnCheckIn.disabled = false;
                     }
-                } catch (err) {
+                } catch {
                     showAttendanceMsg('Could not connect to server.', 'error');
+                    btnCheckIn.disabled = false;
                 }
             });
 
-            // CHECK OUT
             btnCheckOut.addEventListener('click', async () => {
+                btnCheckOut.disabled = true;
                 try {
                     const res  = await fetch('http://localhost:3000/api/dtr/checkout', {
                         method: 'POST',
@@ -648,48 +646,90 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        localStorage.setItem('isClockedIn', 'false');
-                        localStorage.removeItem('clockInTime');
-                        updateAttendanceUI(false, null);
-                        showAttendanceMsg(`${data.message} Hours worked: ${data.workHrs}`, 'success');
+                        showAttendanceMsg(
+                            `${data.message}  Session: ${data.workHrs} hrs`, 'success'
+                        );
+                        await fetchAndSyncStatus();
                     } else {
                         showAttendanceMsg(data.error || 'Check-out failed.', 'error');
+                        btnCheckOut.disabled = false;
                     }
-                } catch (err) {
+                } catch {
                     showAttendanceMsg('Could not connect to server.', 'error');
+                    btnCheckOut.disabled = false;
                 }
             });
         }
 
-        function updateAttendanceUI(isClockedIn, clockInTime) {
+        // Fetches live session status and updates the UI to match
+        async function fetchAndSyncStatus() {
+            const empCode = localStorage.getItem('empCode');
+            if (!empCode) return;
+
+            try {
+                // Live open-session check
+                const [statusRes, summaryRes] = await Promise.all([
+                    fetch(`http://localhost:3000/api/dtr/status/${empCode}`),
+                    fetch(`http://localhost:3000/api/dtr/sessions/${empCode}`)
+                ]);
+                const status  = await statusRes.json();
+                const summary = await summaryRes.json();
+
+                const isClockedIn   = status.isClockedIn;
+                const sessionCount  = summary.sessions?.length || 0;
+                const totalHrs      = summary.totalHrs || 0;
+
+                updateAttendanceUI(isClockedIn, status.checkinTime, sessionCount, totalHrs);
+
+                // Keep localStorage roughly in sync for other tabs
+                localStorage.setItem('isClockedIn', String(isClockedIn));
+            } catch {
+                // Fallback to localStorage if server unreachable
+                const isClockedIn = localStorage.getItem('isClockedIn') === 'true';
+                const clockInTime  = localStorage.getItem('clockInTime');
+                updateAttendanceUI(isClockedIn, clockInTime, '?', '?');
+            }
+        }
+
+        function updateAttendanceUI(isClockedIn, checkinTime, sessionCount, totalHrs) {
+            const timeLabel = checkinTime
+                ? new Date(checkinTime).toLocaleTimeString('en-US',
+                    { hour: '2-digit', minute: '2-digit' })
+                : '';
+
             if (isClockedIn) {
-                attendanceStatus.textContent = 'In';
-                attendanceStatus.style.color = '#28a745';
-                clockInDisplay.textContent   = clockInTime ? `Checked in at ${clockInTime}` : '';
-                btnCheckIn.disabled          = true;
-                btnCheckOut.disabled         = false;
-                btnCheckIn.style.opacity     = '0.4';
-                btnCheckOut.style.opacity    = '1';
+                attendanceStatus.textContent      = 'In';
+                attendanceStatus.style.color      = '#28a745';
+                clockInDisplay.textContent        =
+                    `Checked in at ${timeLabel}` +
+                    (sessionCount > 1 ? `  ·  Session ${sessionCount} today (${totalHrs} hrs total)` : '');
+                btnCheckIn.disabled               = true;
+                btnCheckOut.disabled              = false;
+                btnCheckIn.style.opacity          = '0.4';
+                btnCheckOut.style.opacity         = '1';
             } else {
-                attendanceStatus.textContent = 'Out';
-                attendanceStatus.style.color = '#dc3545';
-                clockInDisplay.textContent   = '';
-                btnCheckIn.disabled          = false;
-                btnCheckOut.disabled         = true;
-                btnCheckIn.style.opacity     = '1';
-                btnCheckOut.style.opacity    = '0.4';
+                attendanceStatus.textContent      = 'Out';
+                attendanceStatus.style.color      = '#dc3545';
+                clockInDisplay.textContent        = sessionCount > 0
+                    ? `${sessionCount} session(s) today · ${totalHrs} hrs total`
+                    : '';
+                btnCheckIn.disabled               = false;
+                btnCheckOut.disabled              = true;
+                btnCheckIn.style.opacity          = '1';
+                btnCheckOut.style.opacity         = '0.4';
             }
         }
 
         function showAttendanceMsg(msg, type) {
-            attendanceMessage.textContent   = msg;
-            attendanceMessage.style.display = 'block';
-            attendanceMessage.style.color   = type === 'success' ? '#155724' : '#dc3545';
-            attendanceMessage.style.background = type === 'success' ? '#d4edda' : '#fff5f5';
-            attendanceMessage.style.padding = '8px 12px';
-            attendanceMessage.style.borderRadius = '4px';
-            attendanceMessage.style.border  = type === 'success' ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
-            setTimeout(() => { attendanceMessage.style.display = 'none'; }, 4000);
+            attendanceMessage.textContent          = msg;
+            attendanceMessage.style.display        = 'block';
+            attendanceMessage.style.color          = type === 'success' ? '#155724' : '#dc3545';
+            attendanceMessage.style.background     = type === 'success' ? '#d4edda' : '#fff5f5';
+            attendanceMessage.style.padding        = '8px 12px';
+            attendanceMessage.style.borderRadius   = '4px';
+            attendanceMessage.style.border         = type === 'success'
+                ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+            setTimeout(() => { attendanceMessage.style.display = 'none'; }, 5000);
         }
     }
 

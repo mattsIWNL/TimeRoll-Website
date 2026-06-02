@@ -518,140 +518,268 @@ app.delete('/api/users/:id', (req, res) => {
     });
 });
 
+// Helper: PH-time date string  →  "YYYY-MM-DD"
+function phDate(d = new Date()) {
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+}
+
+function phNow() {
+    const now = new Date();
+    const ph  = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const pad = n => String(n).padStart(2, '0');
+    return `${ph.getFullYear()}-${pad(ph.getMonth()+1)}-${pad(ph.getDate())} ${pad(ph.getHours())}:${pad(ph.getMinutes())}:${pad(ph.getSeconds())}`;
+}
+
+// Helper: current datetime in MySQL-friendly format
+function sqlNow() {
+    return new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
 // POST /api/dtr/checkin
 app.post('/api/dtr/checkin', (req, res) => {
     const { empCode } = req.body;
-    if (!empCode) return res.status(400).json({ error: 'Employee code is required.' });
+    if (!empCode) return res.status(400).json({ error: 'Employee code required.' });
 
-    const today = new Date();
-    const dtrDate = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }); // gives YYYY-MM-DD in PH time
-    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-    const dtrDay = days[today.getDay()];
+    const today    = phDate();
+    const nowSql   = phNow();
 
-    // Check if already checked in today
-    const checkSql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? AND DTR_DATE = ?";
-    db.query(checkSql, [empCode, dtrDate], (err, results) => {
-        if (err) return res.status(500).json({ error: err.sqlMessage });
-        if (results.length > 0) {
-            return res.status(409).json({ error: 'You have already checked in today.' });
-        }
+    // 1. Verify employee exists
+    db.query(
+        'SELECT CFULLNAME, BRANCHID FROM employee WHERE CCODE = ?',
+        [empCode],
+        (err, empRows) => {
+            if (err)  return res.status(500).json({ error: err.sqlMessage });
+            if (!empRows.length)
+                return res.status(404).json({ error: 'Employee record not found.' });
 
-        // Get employee details from employee table
-        const empSql = "SELECT CFULLNAME, BRANCHID FROM employee WHERE CCODE = ?";
-        db.query(empSql, [empCode], (err, empResults) => {
-            if (err) return res.status(500).json({ error: err.sqlMessage });
-            if (empResults.length === 0) return res.status(404).json({ error: 'Employee record not found.' });
+            // 2. Check for an open session (any date — catches carry-over from yesterday)
+            db.query(
+                "SELECT id, session_date FROM dtr_sessions WHERE emp_code = ? AND status = 'open' LIMIT 1",
+                [empCode],
+                (err, openRows) => {
+                    if (err) return res.status(500).json({ error: err.sqlMessage });
 
-            const empName = empResults[0].CFULLNAME;
-            const branch  = empResults[0].BRANCHID || 'HO';
-            const timeIn  = today.toISOString().slice(0, 19).replace('T', ' ');
-            const placeholder = '1900-01-01 00:00:00';
-            const datePlaceholder = '1900-01-01';
+                    if (openRows.length) {
+                        const d = new Date(openRows[0].session_date)
+                            .toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+                        return res.status(409).json({
+                            error: `You have an open session from ${d}. Please check out first.`
+                        });
+                    }
 
-            const insertSql = `
-                INSERT INTO tmpdtrf1 (
-                    CBRANCH, CEMPCODE, EMPNAME, DTR_DATE, DTR_DAY,
-                    TIME_IN, TIME_OUT,
-                    AMBRKOUT, AMBRKIN, BRK_OUT, BRK_IN,
-                    PMBRKOUT, PMBRKIN,
-                    STIME_IN, STIME_OUT, SBRK_OUT, SBRK_IN,
-                    NLATE, NOVERBRK, NEARLYOT, NUNDERTIME, NABSENT,
-                    NREG, NREGOT, NRESTDAY, NRESTDAYOT,
-                    NSPLHOL, NSPLHOLOT, NSPLREST, NSPLRESTOT,
-                    NLEGAL, NLEGALOT, NLGLREST, NLGLRESTOT,
-                    NDIFF, NNDIFFOT, NNDRD, NNDRDOT,
-                    NNDSPL, NNDSPLOT, NNDSPLRD, NNDSPLRDOT,
-                    NNDLEG, NNDLEGOT, NNDLEGRD, NNDLEGRDOT,
-                    REMARKS, RDAY, OTAPPROVE, EOTAPPROVE, PROCESS,
-                    GRACEUSE, BREAKSUM,
-                    INDATE, OUTDATE, BINDATE, BOUTDATE,
-                    SINDATE, SOUTDATE, SBINDATE, SBOUTDATE,
-                    WORKHRS, OTSTART, APPOT
-                ) VALUES (
-                    ?, ?, ?, ?, ?,
-                    ?, ?,
-                    '', '', ?, ?,
-                    '', '',
-                    ?, ?, ?, ?,
-                    0, 0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    0, 0, 0, 0,
-                    '', '', 0, 0, 0,
-                    0, '',
-                    ?, ?, ?, ?,
-                    0, 0, 0, 0,
-                    0, '', 0
-                )
-            `;
-
-            db.query(insertSql, [
-                branch, empCode, empName, dtrDate, dtrDay,
-                timeIn, placeholder,
-                placeholder, placeholder,
-                placeholder, placeholder, placeholder, placeholder,
-                dtrDate, datePlaceholder, datePlaceholder, datePlaceholder
-            ], (err) => {
-                if (err) {
-                    console.error('Check-in error:', err.sqlMessage);
-                    return res.status(500).json({ error: err.sqlMessage });
+                    // 3. Insert new session
+                    db.query(
+                        `INSERT INTO dtr_sessions
+                            (emp_code, session_date, checkin_time, status)
+                         VALUES (?, ?, ?, 'open')`,
+                        [empCode, today, nowSql],
+                        (err, result) => {
+                            if (err) return res.status(500).json({ error: err.sqlMessage });
+                            res.json({
+                                message:     'Check-in successful.',
+                                sessionId:   result.insertId,
+                                checkinTime: nowSql
+                            });
+                        }
+                    );
                 }
-                res.json({ message: 'Check-in successful.', timeIn });
+            );
+        }
+    );
+});
+
+// ── GET /api/dtr/sessions/:empCode?date=YYYY-MM-DD ────────────
+// Returns all sessions for an employee on a given date (today if omitted).
+// Also returns the daily total and flags any orphaned sessions.
+app.get('/api/dtr/sessions/:empCode', (req, res) => {
+    const empCode = req.params.empCode;
+    const date    = req.query.date || phDate();
+
+    db.query(
+        `SELECT
+            id, session_date, checkin_time, checkout_time,
+            work_hrs, status, created_at
+         FROM dtr_sessions
+         WHERE emp_code = ? AND session_date = ?
+         ORDER BY checkin_time ASC`,
+        [empCode, date],
+        (err, sessions) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+
+            const totalHrs = sessions.reduce((sum, s) => sum + (parseFloat(s.work_hrs) || 0), 0);
+            const hasOpen  = sessions.some(s => s.status === 'open');
+            const orphaned = sessions.filter(s => s.status === 'orphaned');
+
+            res.json({ date, sessions, totalHrs: +totalHrs.toFixed(2), hasOpen, orphaned });
+        }
+    );
+});
+
+// ── GET /api/dtr/status/:empCode ──────────────────────────────
+// Quick status check — does this employee have an open session right now?
+app.get('/api/dtr/status/:empCode', (req, res) => {
+    db.query(
+        `SELECT id, checkin_time, session_date
+         FROM dtr_sessions
+         WHERE emp_code = ? AND status = 'open'
+         LIMIT 1`,
+        [req.params.empCode],
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (!rows.length) return res.json({ isClockedIn: false });
+
+            res.json({
+                isClockedIn:  true,
+                sessionId:    rows[0].id,
+                checkinTime:  rows[0].checkin_time,
+                sessionDate:  rows[0].session_date
             });
-        });
-    });
+        }
+    );
+});
+
+// ── POST /api/dtr/auto-checkout ───────────────────────────────
+// Called by a scheduled job (midnight cron) or manually by an admin.
+// Closes any open sessions older than `cutoffHours` (default 14h).
+// Marks them 'auto_closed' and flags truly orphaned ones.
+app.post('/api/dtr/auto-checkout', (req, res) => {
+    const { adminUser, adminPass } = req.body;
+    const cutoffHours = req.body.cutoffHours ?? 14;
+
+    // Admin verification
+    db.query(
+        "SELECT role FROM users WHERE username = ? AND password = ?",
+        [adminUser, adminPass],
+        (err, authRows) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (!authRows.length || authRows[0].role !== 'admin')
+                return res.status(403).json({ error: 'Admin access required.' });
+
+            const cutoffSql = phNow(); // reference point
+
+            // Find all open sessions older than cutoffHours
+            db.query(
+                `SELECT id, emp_code, checkin_time
+                 FROM dtr_sessions
+                 WHERE status = 'open'
+                   AND checkin_time <= DATE_SUB(?, INTERVAL ? HOUR)`,
+                [cutoffSql, cutoffHours],
+                (err, stale) => {
+                    if (err) return res.status(500).json({ error: err.sqlMessage });
+                    if (!stale.length)
+                        return res.json({ message: 'No stale sessions found.', closed: 0 });
+
+                    // Batch-update them
+                    const ids     = stale.map(s => s.id);
+                    const nowSql  = phNow();
+                    const details = stale.map(s => {
+                        const hrs = ((new Date(nowSql) - new Date(s.checkin_time)) / 3600000).toFixed(2);
+                        return { id: s.id, empCode: s.emp_code, workHrs: hrs };
+                    });
+
+                    db.query(
+                        `UPDATE dtr_sessions
+                         SET checkout_time = ?,
+                             work_hrs = TIMESTAMPDIFF(SECOND, checkin_time, ?) / 3600,
+                             status = 'auto_closed',
+                             updated_at = ?
+                         WHERE id IN (?)`,
+                        [nowSql, nowSql, nowSql, ids],
+                        (err) => {
+                            if (err) return res.status(500).json({ error: err.sqlMessage });
+                            res.json({
+                                message: `Auto-closed ${stale.length} stale session(s).`,
+                                closed:  stale.length,
+                                details
+                            });
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+// ── GET /api/dtr/:empcode  (legacy — keep for View DTR page) ──
+// Now aggregates from dtr_sessions instead of tmpdtrf1.
+// Falls back to tmpdtrf1 for dates that predate the migration.
+app.get('/api/dtr/:empcode', (req, res) => {
+    const empcode = req.params.empcode;
+
+    // Try dtr_sessions first (new data)
+    db.query(
+        `SELECT
+            session_date          AS DTR_DATE,
+            MIN(checkin_time)     AS TIME_IN,
+            MAX(checkout_time)    AS TIME_OUT,
+            0                     AS NLATE,
+            0                     AS NREGOT,
+            SUM(COALESCE(work_hrs,0)) AS WORKHRS,
+            GROUP_CONCAT(status)  AS REMARKS
+         FROM dtr_sessions
+         WHERE emp_code = ?
+         GROUP BY session_date
+         ORDER BY session_date DESC`,
+        [empcode],
+        (err, newRows) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+
+            // Also pull legacy tmpdtrf1 rows not already migrated
+            db.query(
+                `SELECT DTR_DATE, TIME_IN, TIME_OUT, NLATE, NREGOT, WORKHRS, REMARKS
+                 FROM tmpdtrf1
+                 WHERE CEMPCODE = ?
+                   AND DTR_DATE < (
+                       SELECT COALESCE(MIN(session_date), CURDATE())
+                       FROM dtr_sessions WHERE emp_code = ?
+                   )
+                 ORDER BY DTR_DATE DESC`,
+                [empcode, empcode],
+                (err, legacyRows) => {
+                    if (err) return res.status(500).json({ error: err.sqlMessage });
+                    res.json([...newRows, ...legacyRows]);
+                }
+            );
+        }
+    );
 });
 
 // POST /api/dtr/checkout
 app.post('/api/dtr/checkout', (req, res) => {
     const { empCode } = req.body;
-    if (!empCode) return res.status(400).json({ error: 'Employee code is required.' });
+    if (!empCode) return res.status(400).json({ error: 'Employee code required.' });
 
-    const today = new Date();
-    const dtrDate = today.toISOString().split('T')[0];
-    const timeOut = today.toISOString().slice(0, 19).replace('T', ' ');
+    const nowSql = phNow();
 
-    // Check if checked in today
-    const checkSql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? AND DTR_DATE = ?";
-    db.query(checkSql, [empCode, dtrDate], (err, results) => {
-        if (err) return res.status(500).json({ error: err.sqlMessage });
-        if (results.length === 0) {
-            return res.status(404).json({ error: 'No check-in record found for today.' });
+    db.query(
+        "SELECT id, checkin_time FROM dtr_sessions WHERE emp_code = ? AND status = 'open' LIMIT 1",
+        [empCode],
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (!rows.length)
+                return res.status(404).json({ error: 'No open check-in found. Please check in first.' });
+
+            const session = rows[0];
+            const workHrs = (
+                (new Date(nowSql) - new Date(session.checkin_time)) / 3600000
+            ).toFixed(2);
+
+            db.query(
+                `UPDATE dtr_sessions
+                 SET checkout_time = ?, work_hrs = ?, status = 'closed', updated_at = ?
+                 WHERE id = ?`,
+                [nowSql, workHrs, nowSql, session.id],
+                (err) => {
+                    if (err) return res.status(500).json({ error: err.sqlMessage });
+                    res.json({
+                        message:      'Check-out successful.',
+                        checkoutTime: nowSql,
+                        workHrs:      parseFloat(workHrs)
+                    });
+                }
+            );
         }
-
-        const record = results[0];
-
-        // Check if already checked out
-        const timeOutVal = record.TIME_OUT;
-        const timeOutYear = timeOutVal instanceof Date
-            ? timeOutVal.getFullYear()
-            : new Date(timeOutVal).getFullYear();
-
-        if (timeOutYear !== 1900) {
-            return res.status(409).json({ error: 'You have already checked out today.' });
-        }
-
-        // Calculate work hours
-        const timeIn   = new Date(record.TIME_IN);
-        const timeOutD = new Date(timeOut);
-        const workHrs  = ((timeOutD - timeIn) / (1000 * 60 * 60)).toFixed(2);
-
-        const updateSql = `
-            UPDATE tmpdtrf1
-            SET TIME_OUT = ?, WORKHRS = ?, OUTDATE = ?
-            WHERE CEMPCODE = ? AND DTR_DATE = ?
-        `;
-        db.query(updateSql, [timeOut, workHrs, dtrDate, empCode, dtrDate], (err) => {
-            if (err) {
-                console.error('Check-out error:', err.sqlMessage);
-                return res.status(500).json({ error: err.sqlMessage });
-            }
-            res.json({ message: 'Check-out successful.', timeOut, workHrs });
-        });
-    });
+    );
 });
 
 // 10. START SERVER

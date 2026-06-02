@@ -584,6 +584,115 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
  
+        // ── CHECK IN / CHECK OUT ──
+    const btnCheckIn  = document.getElementById('btnCheckIn');
+    const btnCheckOut = document.getElementById('btnCheckOut');
+    const attendanceStatus  = document.getElementById('attendanceStatus');
+    const clockInDisplay    = document.getElementById('clockInDisplay');
+    const attendanceMessage = document.getElementById('attendanceMessage');
+
+    if (btnCheckIn && btnCheckOut) {
+        const empCode   = localStorage.getItem('empCode');
+        const userRole  = localStorage.getItem('userRole');
+
+        // Admins don't check in/out
+        if (userRole === 'admin') {
+            attendanceStatus.textContent = 'N/A (Admin)';
+            btnCheckIn.disabled  = true;
+            btnCheckOut.disabled = true;
+            btnCheckIn.style.opacity  = '0.4';
+            btnCheckOut.style.opacity = '0.4';
+        } else if (!empCode) {
+            attendanceStatus.textContent = 'Not linked to employee record';
+            btnCheckIn.disabled  = true;
+            btnCheckOut.disabled = true;
+            btnCheckIn.style.opacity  = '0.4';
+            btnCheckOut.style.opacity = '0.4';
+        } else {
+            // Restore status from localStorage
+            const isClockedIn  = localStorage.getItem('isClockedIn') === 'true';
+            const clockInTime  = localStorage.getItem('clockInTime');
+
+            updateAttendanceUI(isClockedIn, clockInTime);
+
+            // CHECK IN
+            btnCheckIn.addEventListener('click', async () => {
+                try {
+                    const res  = await fetch('http://localhost:3000/api/dtr/checkin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ empCode })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                        localStorage.setItem('isClockedIn', 'true');
+                        localStorage.setItem('clockInTime', now);
+                        updateAttendanceUI(true, now);
+                        showAttendanceMsg(data.message, 'success');
+                    } else {
+                        showAttendanceMsg(data.error || 'Check-in failed.', 'error');
+                    }
+                } catch (err) {
+                    showAttendanceMsg('Could not connect to server.', 'error');
+                }
+            });
+
+            // CHECK OUT
+            btnCheckOut.addEventListener('click', async () => {
+                try {
+                    const res  = await fetch('http://localhost:3000/api/dtr/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ empCode })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        localStorage.setItem('isClockedIn', 'false');
+                        localStorage.removeItem('clockInTime');
+                        updateAttendanceUI(false, null);
+                        showAttendanceMsg(`${data.message} Hours worked: ${data.workHrs}`, 'success');
+                    } else {
+                        showAttendanceMsg(data.error || 'Check-out failed.', 'error');
+                    }
+                } catch (err) {
+                    showAttendanceMsg('Could not connect to server.', 'error');
+                }
+            });
+        }
+
+        function updateAttendanceUI(isClockedIn, clockInTime) {
+            if (isClockedIn) {
+                attendanceStatus.textContent = 'In';
+                attendanceStatus.style.color = '#28a745';
+                clockInDisplay.textContent   = clockInTime ? `Checked in at ${clockInTime}` : '';
+                btnCheckIn.disabled          = true;
+                btnCheckOut.disabled         = false;
+                btnCheckIn.style.opacity     = '0.4';
+                btnCheckOut.style.opacity    = '1';
+            } else {
+                attendanceStatus.textContent = 'Out';
+                attendanceStatus.style.color = '#dc3545';
+                clockInDisplay.textContent   = '';
+                btnCheckIn.disabled          = false;
+                btnCheckOut.disabled         = true;
+                btnCheckIn.style.opacity     = '1';
+                btnCheckOut.style.opacity    = '0.4';
+            }
+        }
+
+        function showAttendanceMsg(msg, type) {
+            attendanceMessage.textContent   = msg;
+            attendanceMessage.style.display = 'block';
+            attendanceMessage.style.color   = type === 'success' ? '#155724' : '#dc3545';
+            attendanceMessage.style.background = type === 'success' ? '#d4edda' : '#fff5f5';
+            attendanceMessage.style.padding = '8px 12px';
+            attendanceMessage.style.borderRadius = '4px';
+            attendanceMessage.style.border  = type === 'success' ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+            setTimeout(() => { attendanceMessage.style.display = 'none'; }, 4000);
+        }
+    }
+
     // EXIT / LOGOUT
     const exitBtn = document.querySelector('.exit-btn');
     const logoutModal = document.getElementById('logoutModal');
@@ -594,6 +703,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('userRole');
             localStorage.removeItem('username');
+            localStorage.removeItem('isClockedIn');
+            localStorage.removeItem('clockInTime');
             window.location.href = 'login.html';
         });
     }

@@ -79,11 +79,13 @@
             <!-- Quick Check-in/Out -->
             <div class="card action-card">
                 <h3>Attendance Action</h3>
-                <p>Status: <span id="status">Out</span></p>
+                <p>Status: <span id="attendanceStatus">Loading...</span></p>
+                <p id="clockInDisplay" style="font-size:0.85rem; color:#666; margin-top:4px;"></p>
                 <div class="action-buttons">
-                    <button class="btn check-in">Check In</button>
-                    <button class="btn check-out">Check Out</button>
+                    <button class="btn check-in" id="btnCheckIn">Check In</button>
+                    <button class="btn check-out" id="btnCheckOut">Check Out</button>
                 </div>
+                <div id="attendanceMessage" style="margin-top:12px; font-size:0.85rem; display:none;"></div>
             </div>
         </div>
 

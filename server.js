@@ -410,12 +410,12 @@ app.get('/api/dtr/:empcode', (req, res) => {
 // POST /api/login  — authenticate a user against the users table
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
- 
+
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
- 
-    const sql = 'SELECT id, username, role FROM users WHERE username = ? AND password = ?';
+
+    const sql = 'SELECT id, username, role, emp_code FROM users WHERE username = ? AND password = ?';
     db.query(sql, [username, password], (err, results) => {
         if (err) {
             console.error('Login query error:', err.sqlMessage);
@@ -424,9 +424,13 @@ app.post('/api/login', (req, res) => {
         if (results.length === 0) {
             return res.status(401).json({ error: 'Invalid username or password.' });
         }
-        // Return role so the frontend can store it in localStorage
         const user = results[0];
-        res.json({ message: 'Login successful.', username: user.username, role: user.role });
+        res.json({
+            message: 'Login successful.',
+            username: user.username,
+            role: user.role,
+            emp_code: user.emp_code || null
+        });
     });
 });
  
@@ -434,7 +438,7 @@ app.post('/api/login', (req, res) => {
 // POST /api/users  — admin creates a new user account
 // Requires adminUser + adminPass in the body to verify the requester is an admin
 app.post('/api/users', (req, res) => {
-    const { adminUser, adminPass, username, password, role } = req.body;
+    const { adminUser, adminPass, username, password, role, empCode } = req.body;
  
     if (!adminUser || !adminPass || !username || !password || !role) {
         return res.status(400).json({ error: 'All fields are required.' });
@@ -460,8 +464,8 @@ app.post('/api/users', (req, res) => {
             }
  
             // 3. Insert new user (role defaults to 'admin' in DB but we set it explicitly here)
-            const insertSql = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
-            db.query(insertSql, [username, password, role], (err) => {
+            const insertSql = "INSERT INTO users (username, password, role, emp_code) VALUES (?, ?, ?, ?)";
+            db.query(insertSql, [username, password, role, empCode || null], (err) => {
                 if (err) {
                     console.error('Insert user error:', err.sqlMessage);
                     return res.status(500).json({ error: err.sqlMessage });
@@ -510,6 +514,142 @@ app.delete('/api/users/:id', (req, res) => {
             if (err) return res.status(500).json({ error: err.sqlMessage });
             if (result.affectedRows === 0) return res.status(404).json({ error: 'User not found.' });
             res.json({ message: 'User deleted.' });
+        });
+    });
+});
+
+// POST /api/dtr/checkin
+app.post('/api/dtr/checkin', (req, res) => {
+    const { empCode } = req.body;
+    if (!empCode) return res.status(400).json({ error: 'Employee code is required.' });
+
+    const today = new Date();
+    const dtrDate = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }); // gives YYYY-MM-DD in PH time
+    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const dtrDay = days[today.getDay()];
+
+    // Check if already checked in today
+    const checkSql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? AND DTR_DATE = ?";
+    db.query(checkSql, [empCode, dtrDate], (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (results.length > 0) {
+            return res.status(409).json({ error: 'You have already checked in today.' });
+        }
+
+        // Get employee details from employee table
+        const empSql = "SELECT CFULLNAME, BRANCHID FROM employee WHERE CCODE = ?";
+        db.query(empSql, [empCode], (err, empResults) => {
+            if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (empResults.length === 0) return res.status(404).json({ error: 'Employee record not found.' });
+
+            const empName = empResults[0].CFULLNAME;
+            const branch  = empResults[0].BRANCHID || 'HO';
+            const timeIn  = today.toISOString().slice(0, 19).replace('T', ' ');
+            const placeholder = '1900-01-01 00:00:00';
+            const datePlaceholder = '1900-01-01';
+
+            const insertSql = `
+                INSERT INTO tmpdtrf1 (
+                    CBRANCH, CEMPCODE, EMPNAME, DTR_DATE, DTR_DAY,
+                    TIME_IN, TIME_OUT,
+                    AMBRKOUT, AMBRKIN, BRK_OUT, BRK_IN,
+                    PMBRKOUT, PMBRKIN,
+                    STIME_IN, STIME_OUT, SBRK_OUT, SBRK_IN,
+                    NLATE, NOVERBRK, NEARLYOT, NUNDERTIME, NABSENT,
+                    NREG, NREGOT, NRESTDAY, NRESTDAYOT,
+                    NSPLHOL, NSPLHOLOT, NSPLREST, NSPLRESTOT,
+                    NLEGAL, NLEGALOT, NLGLREST, NLGLRESTOT,
+                    NDIFF, NNDIFFOT, NNDRD, NNDRDOT,
+                    NNDSPL, NNDSPLOT, NNDSPLRD, NNDSPLRDOT,
+                    NNDLEG, NNDLEGOT, NNDLEGRD, NNDLEGRDOT,
+                    REMARKS, RDAY, OTAPPROVE, EOTAPPROVE, PROCESS,
+                    GRACEUSE, BREAKSUM,
+                    INDATE, OUTDATE, BINDATE, BOUTDATE,
+                    SINDATE, SOUTDATE, SBINDATE, SBOUTDATE,
+                    WORKHRS, OTSTART, APPOT
+                ) VALUES (
+                    ?, ?, ?, ?, ?,
+                    ?, ?,
+                    '', '', ?, ?,
+                    '', '',
+                    ?, ?, ?, ?,
+                    0, 0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    '', '', 0, 0, 0,
+                    0, '',
+                    ?, ?, ?, ?,
+                    0, 0, 0, 0,
+                    0, '', 0
+                )
+            `;
+
+            db.query(insertSql, [
+                branch, empCode, empName, dtrDate, dtrDay,
+                timeIn, placeholder,
+                placeholder, placeholder,
+                placeholder, placeholder, placeholder, placeholder,
+                dtrDate, datePlaceholder, datePlaceholder, datePlaceholder
+            ], (err) => {
+                if (err) {
+                    console.error('Check-in error:', err.sqlMessage);
+                    return res.status(500).json({ error: err.sqlMessage });
+                }
+                res.json({ message: 'Check-in successful.', timeIn });
+            });
+        });
+    });
+});
+
+// POST /api/dtr/checkout
+app.post('/api/dtr/checkout', (req, res) => {
+    const { empCode } = req.body;
+    if (!empCode) return res.status(400).json({ error: 'Employee code is required.' });
+
+    const today = new Date();
+    const dtrDate = today.toISOString().split('T')[0];
+    const timeOut = today.toISOString().slice(0, 19).replace('T', ' ');
+
+    // Check if checked in today
+    const checkSql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? AND DTR_DATE = ?";
+    db.query(checkSql, [empCode, dtrDate], (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'No check-in record found for today.' });
+        }
+
+        const record = results[0];
+
+        // Check if already checked out
+        const timeOutVal = record.TIME_OUT;
+        const timeOutYear = timeOutVal instanceof Date
+            ? timeOutVal.getFullYear()
+            : new Date(timeOutVal).getFullYear();
+
+        if (timeOutYear !== 1900) {
+            return res.status(409).json({ error: 'You have already checked out today.' });
+        }
+
+        // Calculate work hours
+        const timeIn   = new Date(record.TIME_IN);
+        const timeOutD = new Date(timeOut);
+        const workHrs  = ((timeOutD - timeIn) / (1000 * 60 * 60)).toFixed(2);
+
+        const updateSql = `
+            UPDATE tmpdtrf1
+            SET TIME_OUT = ?, WORKHRS = ?, OUTDATE = ?
+            WHERE CEMPCODE = ? AND DTR_DATE = ?
+        `;
+        db.query(updateSql, [timeOut, workHrs, dtrDate, empCode, dtrDate], (err) => {
+            if (err) {
+                console.error('Check-out error:', err.sqlMessage);
+                return res.status(500).json({ error: err.sqlMessage });
+            }
+            res.json({ message: 'Check-out successful.', timeOut, workHrs });
         });
     });
 });

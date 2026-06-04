@@ -1307,21 +1307,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSearchDTR = document.getElementById('btnSearchDTR');
     if (btnSearchDTR) {
         btnSearchDTR.addEventListener('click', async () => {
-            const empCode = document.getElementById('dtrSearchInput').value;
-            const response = await fetch(`http://localhost:3000/api/dtr/${empCode}`);
-            const dtrData = await response.json();
-            const resultsDiv = document.getElementById('dtrResults');
-            if (dtrData.length > 0) {
-                resultsDiv.style.display = 'block';
-                const tableBody = document.getElementById('dtrTableBody');
-                tableBody.innerHTML = dtrData.map(row => `
-                    <tr>
-                        <td>${new Date(row.DTR_DATE).toLocaleDateString()}</td>
-                        <td>${row.TIME_IN}</td><td>${row.TIME_OUT}</td>
-                        <td>${row.NLATE}</td><td>${row.NREGOT}</td>
-                        <td>${row.WORKHRS}</td><td>${row.REMARKS}</td>
-                    </tr>`).join('');
-            } else { alert("No records found."); resultsDiv.style.display = 'none'; }
+            const empCode = document.getElementById('dtrSearchInput').value.trim();
+            if (!empCode) { alert('Please enter an Employee ID.'); return; }
+
+            try {
+                const res  = await fetch(`http://localhost:3000/api/dtr/${empCode}`);
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.error || 'No records found.');
+                    document.getElementById('dtrResults').style.display      = 'none';
+                    document.getElementById('dtrEmployeeCard').style.display = 'none';
+                    return;
+                }
+
+                const { employee, records } = data;
+
+                // Populate employee header card
+                document.getElementById('dtrEmpName').textContent   = employee.name;
+                document.getElementById('dtrEmpCode').textContent   = employee.code;
+                document.getElementById('dtrShiftDesc').textContent = employee.shiftDesc;
+                document.getElementById('dtrShiftTime').textContent =
+                    employee.shiftIn !== '—' ? `${employee.shiftIn} – ${employee.shiftOut}` : '—';
+                document.getElementById('dtrEmployeeCard').style.display = 'block';
+
+                if (!records.length) {
+                    alert('No DTR records found for this employee.');
+                    document.getElementById('dtrResults').style.display = 'none';
+                    return;
+                }
+
+                // Compute summary stats
+                const totalHrs   = records.reduce((s, r) => s + parseFloat(r.WORKHRS  || 0), 0);
+                const totalOT    = records.reduce((s, r) => s + parseInt(r.NREGOT     || 0), 0);
+                const totalLate  = records.reduce((s, r) => s + parseInt(r.NLATE      || 0), 0);
+                const daysPresent = records.filter(r => r.TIME_IN !== '—').length;
+
+                document.getElementById('statHours').textContent   = totalHrs.toFixed(2);
+                document.getElementById('statOT').textContent      = totalOT;
+                document.getElementById('statLate').textContent    = totalLate;
+                document.getElementById('statPresent').textContent = daysPresent;
+                document.getElementById('statAbsent').textContent  = '—'; // requires schedule calendar to compute
+
+                // Render table rows
+                const tbody = document.getElementById('dtrTableBody');
+                tbody.innerHTML = records.map(row => {
+                    const rawDate  = row.DTR_DATE instanceof Date
+                        ? row.DTR_DATE.toISOString().slice(0, 10)
+                        : String(row.DTR_DATE).slice(0, 10);
+                    const dateStr  = new Date(rawDate + 'T00:00:00')
+                        .toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+                    const lateCell = row.NLATE > 0
+                        ? `<span style="color:#dc3545; font-weight:600;">${row.NLATE}</span>`
+                        : `<span style="color:#999;">0</span>`;
+                    const otCell   = row.NREGOT > 0
+                        ? `<span style="color:#28a745; font-weight:600;">${row.NREGOT}</span>`
+                        : `<span style="color:#999;">0</span>`;
+                    const statusClass = row.TIME_OUT === 'Open' ? 'color:#e67e22; font-weight:600;' : '';
+
+                    return `
+                        <tr>
+                            <td>${dateStr}</td>
+                            <td>
+                                <div style="font-size:13px; font-weight:600;">${row.SHIFT_DESC}</div>
+                                <div style="font-size:11px; color:#888;">${row.SHIFT_SCHED}</div>
+                            </td>
+                            <td>${row.TIME_IN}</td>
+                            <td style="${statusClass}">${row.TIME_OUT}</td>
+                            <td>${row.WORKHRS}</td>
+                            <td>${lateCell}</td>
+                            <td>${otCell}</td>
+                            <td><span style="font-size:11px; color:#888;">${row.REMARKS}</span></td>
+                        </tr>`;
+                }).join('');
+
+                document.getElementById('dtrResults').style.display = 'block';
+
+            } catch (err) {
+                console.error('DTR fetch error:', err);
+                alert('Could not connect to server. Is Node running?');
+            }
         });
     }
     

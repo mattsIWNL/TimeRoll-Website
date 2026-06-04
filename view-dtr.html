@@ -53,33 +53,51 @@
     </nav>
 
     <main class="dashboard-container">
-        <div class="content-header">
+         <div class="content-header">
             <h2>View Daily Time Record (DTR)</h2>
         </div>
 
         <!-- SEARCH SECTION -->
         <div class="card search-card">
             <div class="form-group-inline">
-                <label>Employee ID/Name:</label>
-                <input type="text" id="dtrSearchInput" placeholder="Enter ID (e.g., 2024-001)">
-                <button class="btn-search" id="btnSearchDTR"><i class="fas fa-search"></i> View Records</button>
+                <label>Employee ID:</label>
+                <input type="text" id="dtrSearchInput" placeholder="e.g. 2026003">
+                <button class="btn-search" id="btnSearchDTR">
+                    <i class="fas fa-search"></i> View Records
+                </button>
+            </div>
+        </div>
+
+        <!-- EMPLOYEE HEADER CARD -->
+        <div id="dtrEmployeeCard" class="card" style="display:none; margin-top:16px;">
+            <div style="display:flex; gap:32px; flex-wrap:wrap; align-items:center;">
+                <div>
+                    <div style="font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.5px;">Employee</div>
+                    <div style="font-size:18px; font-weight:700;" id="dtrEmpName">—</div>
+                    <div style="font-size:13px; color:#555;" id="dtrEmpCode">—</div>
+                </div>
+                <div>
+                    <div style="font-size:12px; color:#888; text-transform:uppercase; letter-spacing:.5px;">Assigned Shift</div>
+                    <div style="font-size:15px; font-weight:600;" id="dtrShiftDesc">—</div>
+                    <div style="font-size:13px; color:#555;" id="dtrShiftTime">—</div>
+                </div>
             </div>
         </div>
 
         <!-- SUMMARY STATISTICS ROW -->
-        <div id="dtrResults" style="display: none;">
-            <div class="stats-grid">
+        <div id="dtrResults" style="display:none;">
+            <div class="stats-grid" style="margin-top:16px;">
                 <div class="card stat-box">
                     <span class="stat-label">Total Hours Worked</span>
                     <span class="stat-value" id="statHours">0.00</span>
                 </div>
                 <div class="card stat-box">
                     <span class="stat-label">Overtime (Mins)</span>
-                    <span class="stat-value" id="statOT" style="color: #28a745;">0</span>
+                    <span class="stat-value" id="statOT" style="color:#28a745;">0</span>
                 </div>
                 <div class="card stat-box">
                     <span class="stat-label">Late (Mins)</span>
-                    <span class="stat-value" id="statLate" style="color: #dc3545;">0</span>
+                    <span class="stat-value" id="statLate" style="color:#dc3545;">0</span>
                 </div>
                 <div class="card stat-box">
                     <span class="stat-label">Days Present</span>
@@ -87,28 +105,26 @@
                 </div>
                 <div class="card stat-box">
                     <span class="stat-label">Days Absent</span>
-                    <span class="stat-value" id="statAbsent">0</span>
+                    <span class="stat-value" id="statAbsent" style="color:#dc3545;">0</span>
                 </div>
             </div>
 
             <!-- DTR TABLE -->
-            <div class="card" style="margin-top: 20px;">
-                <h3>Detailed Log: <span id="displayEmployeeName">Employee Name</span></h3>
+            <div class="card" style="margin-top:20px; overflow-x:auto;">
                 <table class="employee-table">
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
+                            <th>Assigned Schedule</th>
+                            <th>Clock-In</th>
+                            <th>Clock-Out</th>
+                            <th>Total Hrs</th>
                             <th>Late (m)</th>
                             <th>OT (m)</th>
-                            <th>Total Hrs</th>
                             <th>Remarks</th>
                         </tr>
                     </thead>
-                    <tbody id="dtrTableBody">
-                        <!-- Data will be injected here by JS -->
-                    </tbody>
+                    <tbody id="dtrTableBody"></tbody>
                 </table>
             </div>
         </div>

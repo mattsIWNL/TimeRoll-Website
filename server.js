@@ -715,38 +715,140 @@ app.get('/api/dtr/checked-in', (req, res) => {
 app.get('/api/dtr/:empcode', (req, res) => {
     const empcode = req.params.empcode;
 
-    // Try dtr_sessions first (new data)
+    // 1. Fetch employee's assigned shift
     db.query(
         `SELECT
-            session_date          AS DTR_DATE,
-            MIN(checkin_time)     AS TIME_IN,
-            MAX(checkout_time)    AS TIME_OUT,
-            0                     AS NLATE,
-            0                     AS NREGOT,
-            SUM(COALESCE(work_hrs,0)) AS WORKHRS,
-            GROUP_CONCAT(status)  AS REMARKS
-         FROM dtr_sessions
-         WHERE emp_code = ?
-         GROUP BY session_date
-         ORDER BY session_date DESC`,
+        DATE(checkin_time)           AS session_date,
+        MIN(checkin_time)            AS first_checkin,
+        MAX(checkout_time)           AS last_checkout,
+        SUM(COALESCE(work_hrs, 0))   AS total_work_hrs,
+        GROUP_CONCAT(status)         AS statuses
+        FROM dtr_sessions
+        WHERE emp_code = ?
+        GROUP BY DATE(checkin_time)
+        ORDER BY DATE(checkin_time) DESC`,
         [empcode],
-        (err, newRows) => {
+        (err, empRows) => {
             if (err) return res.status(500).json({ error: err.sqlMessage });
+            if (!empRows.length) return res.status(404).json({ error: 'Employee not found.' });
 
-            // Also pull legacy tmpdtrf1 rows not already migrated
+            const emp = empRows[0];
+
+            // Helper: parse "HH:MM AM/PM" or "HH:MM" into total minutes since midnight
+            function parseTimeToMinutes(timeStr) {
+                if (!timeStr) return null;
+                timeStr = timeStr.trim();
+
+                // Handle "HH:MM:SS" (from MySQL datetime)
+                if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+                    const [h, m] = timeStr.split(':').map(Number);
+                    return h * 60 + m;
+                }
+
+                // Handle "HH:MM AM/PM"
+                const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+                if (match) {
+                    let h = parseInt(match[1]);
+                    const m = parseInt(match[2]);
+                    const meridiem = match[3].toUpperCase();
+                    if (meridiem === 'PM' && h !== 12) h += 12;
+                    if (meridiem === 'AM' && h === 12) h = 0;
+                    return h * 60 + m;
+                }
+
+                // Handle "HH:MM"
+                const plain = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+                if (plain) {
+                    return parseInt(plain[1]) * 60 + parseInt(plain[2]);
+                }
+
+                return null;
+            }
+
+            function extractTimeFromDatetime(datetimeVal) {
+                if (!datetimeVal) return null;
+                // datetimeVal may be a JS Date object or a string like "2026-06-04 14:22:35"
+                const str = (datetimeVal instanceof Date)
+                    ? datetimeVal.toISOString().replace('T', ' ')
+                    : String(datetimeVal);
+                const match = str.match(/(\d{2}:\d{2}:\d{2})/);
+                return match ? match[1] : null;
+            }
+
+            function formatTime12h(datetimeVal) {
+                if (!datetimeVal) return null;
+                const timeStr = extractTimeFromDatetime(datetimeVal);
+                if (!timeStr) return null;
+                const [h, m] = timeStr.split(':').map(Number);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const hour = h % 12 || 12;
+                return `${String(hour).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+            }
+
+            // 2. Aggregate sessions by date
             db.query(
-                `SELECT DTR_DATE, TIME_IN, TIME_OUT, NLATE, NREGOT, WORKHRS, REMARKS
-                 FROM tmpdtrf1
-                 WHERE CEMPCODE = ?
-                   AND DTR_DATE < (
-                       SELECT COALESCE(MIN(session_date), CURDATE())
-                       FROM dtr_sessions WHERE emp_code = ?
-                   )
-                 ORDER BY DTR_DATE DESC`,
-                [empcode, empcode],
-                (err, legacyRows) => {
+                `SELECT
+                    session_date,
+                    MIN(checkin_time)            AS first_checkin,
+                    MAX(checkout_time)           AS last_checkout,
+                    SUM(COALESCE(work_hrs, 0))   AS total_work_hrs,
+                    GROUP_CONCAT(status)         AS statuses
+                 FROM dtr_sessions
+                 WHERE emp_code = ?
+                 GROUP BY session_date
+                 ORDER BY session_date DESC`,
+                [empcode],
+                (err, sessions) => {
                     if (err) return res.status(500).json({ error: err.sqlMessage });
-                    res.json([...newRows, ...legacyRows]);
+
+                    const shiftLoginMins  = parseTimeToMinutes(emp.SHIFT_LOGIN);
+                    const shiftLogoutMins = parseTimeToMinutes(emp.SHIFT_LOGOUT);
+
+                    const rows = sessions.map(s => {
+                        const checkinTimeStr  = extractTimeFromDatetime(s.first_checkin);
+                        const checkoutTimeStr = extractTimeFromDatetime(s.last_checkout);
+
+                        const checkinMins  = parseTimeToMinutes(checkinTimeStr);
+                        const checkoutMins = parseTimeToMinutes(checkoutTimeStr);
+
+                        // Late = how many minutes after scheduled login
+                        let lateMins = 0;
+                        if (checkinMins !== null && shiftLoginMins !== null) {
+                            lateMins = Math.max(0, checkinMins - shiftLoginMins);
+                        }
+
+                        // OT = how many minutes worked beyond scheduled work hours
+                        let otMins = 0;
+                        if (checkoutMins !== null && shiftLogoutMins !== null) {
+                            otMins = Math.max(0, checkoutMins - shiftLogoutMins);
+                        }
+
+                        return {
+                            DTR_DATE:      s.session_date,
+                            SHIFT_DESC:    emp.SHIFT_DESC   || '—',
+                            SHIFT_SCHED:   emp.SHIFT_LOGIN && emp.SHIFT_LOGOUT
+                                               ? `${emp.SHIFT_LOGIN} – ${emp.SHIFT_LOGOUT}`
+                                               : '—',
+                            TIME_IN:       formatTime12h(s.first_checkin)  || '—',
+                            TIME_OUT:      formatTime12h(s.last_checkout)  || 'Open',
+                            WORKHRS:       parseFloat(s.total_work_hrs).toFixed(2),
+                            NLATE:         lateMins,
+                            NREGOT:        otMins,
+                            REMARKS:       s.statuses
+                        };
+                    });
+
+                    res.json({
+                        employee: {
+                            code:      emp.CCODE,
+                            name:      emp.CFULLNAME,
+                            shiftDesc: emp.SHIFT_DESC    || 'No shift assigned',
+                            shiftIn:   emp.SHIFT_LOGIN   || '—',
+                            shiftOut:  emp.SHIFT_LOGOUT  || '—',
+                            shiftHrs:  emp.SHIFT_WORKHRS || '—'
+                        },
+                        records: rows
+                    });
                 }
             );
         }

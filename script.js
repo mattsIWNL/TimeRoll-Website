@@ -548,10 +548,53 @@ function updateTime() {
 
     }
 }
- 
+
 setInterval(updateTime, 1000);
 updateTime();
- 
+
+async function loadCheckedInEmployees() {
+    const tableBody = document.getElementById('checkedInTableBody');
+    if (!tableBody) return;
+
+    try {
+        const response = await fetch('http://localhost:3000/api/dtr/checked-in');
+        const employees = await response.json();
+        tableBody.innerHTML = '';
+
+        if (employees.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" style="text-align:center; color:#999;">
+                        No employees currently checked in.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        employees.forEach(emp => {
+            const checkInTime = new Date(emp.checkin_time).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${emp.CFULLNAME}</td>
+                    <td>${emp.DEPTID || '—'}</td>
+                    <td>${checkInTime}</td>
+                </tr>`;
+        });
+    } catch (err) {
+        console.error('Error loading checked-in employees:', err);
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align:center; color:#e74c3c;">
+                    Could not load data. Is the server running?
+                </td>
+            </tr>`;
+    }
+}
+
 // --- 3. MAIN INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
  
@@ -563,6 +606,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('editSchedule')) loadShiftDropdown();
     if (document.getElementById('assignedScheduleBody')) loadAssignedScheduleTable();
     if (document.getElementById('breaksConfigTableBody')) loadBreaksConfigTable();
+    if (document.getElementById('checkedInTableBody')) {
+            loadCheckedInEmployees();
+            setInterval(loadCheckedInEmployees, 30000); // refresh every 30s
+        }
     
     document.querySelectorAll('.username').forEach(el => {
         el.textContent = localStorage.getItem('username') || 'User';

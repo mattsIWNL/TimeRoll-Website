@@ -398,15 +398,6 @@ app.put('/api/holidays', (req, res) => {
     });
 });
 
-// 9. GET DTR FOR SPECIFIC EMPLOYEE (For View DTR Page)
-app.get('/api/dtr/:empcode', (req, res) => {
-    const sql = "SELECT * FROM tmpdtrf1 WHERE CEMPCODE = ? ORDER BY DTR_DATE DESC";
-    db.query(sql, [req.params.empcode], (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results);
-    });
-});
-
 // POST /api/login  — authenticate a user against the users table
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
@@ -698,6 +689,24 @@ app.post('/api/dtr/auto-checkout', (req, res) => {
             );
         }
     );
+});
+
+// GET /api/dtr/checked-in  — employees with an open session right now
+app.get('/api/dtr/checked-in', (req, res) => {
+    const sql = `
+        SELECT
+            e.CFULLNAME,
+            e.DEPTID,
+            s.checkin_time
+        FROM dtr_sessions s
+        JOIN employee e ON s.emp_code = e.CCODE
+        WHERE s.status = 'open'
+        ORDER BY s.checkin_time ASC
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.sqlMessage });
+        res.json(results);
+    });
 });
 
 // ── GET /api/dtr/:empcode  (legacy — keep for View DTR page) ──

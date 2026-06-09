@@ -715,18 +715,19 @@ app.get('/api/dtr/checked-in', (req, res) => {
 app.get('/api/dtr/:empcode', (req, res) => {
     const empcode = req.params.empcode;
 
-    // 1. Fetch employee's assigned shift
+    // STEP 1: Fetch employee + their assigned shift (this was missing!)
     db.query(
         `SELECT
-        DATE(checkin_time)           AS session_date,
-        MIN(checkin_time)            AS first_checkin,
-        MAX(checkout_time)           AS last_checkout,
-        SUM(COALESCE(work_hrs, 0))   AS total_work_hrs,
-        GROUP_CONCAT(status)         AS statuses
-        FROM dtr_sessions
-        WHERE emp_code = ?
-        GROUP BY DATE(checkin_time)
-        ORDER BY DATE(checkin_time) DESC`,
+            e.CCODE,
+            e.CFULLNAME,
+            e.SHIFT_ID,
+            s.CDESC   AS SHIFT_DESC,
+            s.CLOGIN  AS SHIFT_LOGIN,
+            s.CLOGOUT AS SHIFT_LOGOUT,
+            s.WORKHRS AS SHIFT_WORKHRS
+         FROM employee e
+         LEFT JOIN shiftdb s ON e.SHIFT_ID = s.CCODE
+         WHERE e.CCODE = ?`,
         [empcode],
         (err, empRows) => {
             if (err) return res.status(500).json({ error: err.sqlMessage });
@@ -734,18 +735,13 @@ app.get('/api/dtr/:empcode', (req, res) => {
 
             const emp = empRows[0];
 
-            // Helper: parse "HH:MM AM/PM" or "HH:MM" into total minutes since midnight
             function parseTimeToMinutes(timeStr) {
                 if (!timeStr) return null;
                 timeStr = timeStr.trim();
-
-                // Handle "HH:MM:SS" (from MySQL datetime)
                 if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
                     const [h, m] = timeStr.split(':').map(Number);
                     return h * 60 + m;
                 }
-
-                // Handle "HH:MM AM/PM"
                 const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
                 if (match) {
                     let h = parseInt(match[1]);
@@ -755,19 +751,13 @@ app.get('/api/dtr/:empcode', (req, res) => {
                     if (meridiem === 'AM' && h === 12) h = 0;
                     return h * 60 + m;
                 }
-
-                // Handle "HH:MM"
                 const plain = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-                if (plain) {
-                    return parseInt(plain[1]) * 60 + parseInt(plain[2]);
-                }
-
+                if (plain) return parseInt(plain[1]) * 60 + parseInt(plain[2]);
                 return null;
             }
 
             function extractTimeFromDatetime(datetimeVal) {
                 if (!datetimeVal) return null;
-                // datetimeVal may be a JS Date object or a string like "2026-06-04 14:22:35"
                 const str = (datetimeVal instanceof Date)
                     ? datetimeVal.toISOString().replace('T', ' ')
                     : String(datetimeVal);
@@ -777,26 +767,31 @@ app.get('/api/dtr/:empcode', (req, res) => {
 
             function formatTime12h(datetimeVal) {
                 if (!datetimeVal) return null;
-                const timeStr = extractTimeFromDatetime(datetimeVal);
-                if (!timeStr) return null;
-                const [h, m] = timeStr.split(':').map(Number);
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const hour = h % 12 || 12;
-                return `${String(hour).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+                // Convert to PH time (UTC+8) before formatting
+                const date = (datetimeVal instanceof Date)
+                    ? datetimeVal
+                    : new Date(String(datetimeVal).replace(' ', 'T'));
+                
+                return date.toLocaleTimeString('en-US', {
+                    timeZone: 'Asia/Manila',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
             }
 
-            // 2. Aggregate sessions by date
+            // STEP 2: Now fetch the DTR sessions
             db.query(
                 `SELECT
-                    session_date,
+                    DATE(checkin_time)           AS session_date,
                     MIN(checkin_time)            AS first_checkin,
                     MAX(checkout_time)           AS last_checkout,
                     SUM(COALESCE(work_hrs, 0))   AS total_work_hrs,
                     GROUP_CONCAT(status)         AS statuses
                  FROM dtr_sessions
                  WHERE emp_code = ?
-                 GROUP BY session_date
-                 ORDER BY session_date DESC`,
+                 GROUP BY DATE(checkin_time)
+                 ORDER BY DATE(checkin_time) DESC`,
                 [empcode],
                 (err, sessions) => {
                     if (err) return res.status(500).json({ error: err.sqlMessage });
@@ -805,36 +800,30 @@ app.get('/api/dtr/:empcode', (req, res) => {
                     const shiftLogoutMins = parseTimeToMinutes(emp.SHIFT_LOGOUT);
 
                     const rows = sessions.map(s => {
-                        const checkinTimeStr  = extractTimeFromDatetime(s.first_checkin);
-                        const checkoutTimeStr = extractTimeFromDatetime(s.last_checkout);
+                        const rawDate = (s.session_date instanceof Date)
+                            ? s.session_date.toISOString().slice(0, 10)
+                            : String(s.session_date).slice(0, 10);
 
-                        const checkinMins  = parseTimeToMinutes(checkinTimeStr);
-                        const checkoutMins = parseTimeToMinutes(checkoutTimeStr);
+                        const checkinMins  = parseTimeToMinutes(extractTimeFromDatetime(s.first_checkin));
+                        const checkoutMins = parseTimeToMinutes(extractTimeFromDatetime(s.last_checkout));
 
-                        // Late = how many minutes after scheduled login
-                        let lateMins = 0;
-                        if (checkinMins !== null && shiftLoginMins !== null) {
-                            lateMins = Math.max(0, checkinMins - shiftLoginMins);
-                        }
-
-                        // OT = how many minutes worked beyond scheduled work hours
-                        let otMins = 0;
-                        if (checkoutMins !== null && shiftLogoutMins !== null) {
-                            otMins = Math.max(0, checkoutMins - shiftLogoutMins);
-                        }
+                        const lateMins = (checkinMins !== null && shiftLoginMins !== null)
+                            ? Math.max(0, checkinMins - shiftLoginMins) : 0;
+                        const otMins = (checkoutMins !== null && shiftLogoutMins !== null)
+                            ? Math.max(0, checkoutMins - shiftLogoutMins) : 0;
 
                         return {
-                            DTR_DATE:      s.session_date,
-                            SHIFT_DESC:    emp.SHIFT_DESC   || '—',
-                            SHIFT_SCHED:   emp.SHIFT_LOGIN && emp.SHIFT_LOGOUT
-                                               ? `${emp.SHIFT_LOGIN} – ${emp.SHIFT_LOGOUT}`
-                                               : '—',
-                            TIME_IN:       formatTime12h(s.first_checkin)  || '—',
-                            TIME_OUT:      formatTime12h(s.last_checkout)  || 'Open',
-                            WORKHRS:       parseFloat(s.total_work_hrs).toFixed(2),
-                            NLATE:         lateMins,
-                            NREGOT:        otMins,
-                            REMARKS:       s.statuses
+                            DTR_DATE:    rawDate,
+                            SHIFT_DESC:  emp.SHIFT_DESC  || '—',
+                            SHIFT_SCHED: emp.SHIFT_LOGIN && emp.SHIFT_LOGOUT
+                                             ? `${emp.SHIFT_LOGIN} – ${emp.SHIFT_LOGOUT}`
+                                             : '—',
+                            TIME_IN:     formatTime12h(s.first_checkin)  || '—',
+                            TIME_OUT:    formatTime12h(s.last_checkout)  || 'Open',
+                            WORKHRS:     parseFloat(s.total_work_hrs).toFixed(2),
+                            NLATE:       lateMins,
+                            NREGOT:      otMins,
+                            REMARKS:     s.statuses
                         };
                     });
 
@@ -842,9 +831,9 @@ app.get('/api/dtr/:empcode', (req, res) => {
                         employee: {
                             code:      emp.CCODE,
                             name:      emp.CFULLNAME,
-                            shiftDesc: emp.SHIFT_DESC    || 'No shift assigned',
-                            shiftIn:   emp.SHIFT_LOGIN   || '—',
-                            shiftOut:  emp.SHIFT_LOGOUT  || '—',
+                            shiftDesc: emp.SHIFT_DESC  || 'No shift assigned',
+                            shiftIn:   emp.SHIFT_LOGIN || '—',
+                            shiftOut:  emp.SHIFT_LOGOUT|| '—',
                             shiftHrs:  emp.SHIFT_WORKHRS || '—'
                         },
                         records: rows

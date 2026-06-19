@@ -736,33 +736,45 @@ app.get('/api/dtr/:empcode', (req, res) => {
             const emp = empRows[0];
 
             function parseTimeToMinutes(timeStr) {
-                if (!timeStr) return null;
+                 if (!timeStr) return null;
                 timeStr = timeStr.trim();
-                if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
-                    const [h, m] = timeStr.split(':').map(Number);
+
+                // HH:MM:SS or HH:MM, strictly 24-hour
+                const match24 = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+                if (match24) {
+                    const h = parseInt(match24[1]);
+                    const m = parseInt(match24[2]);
+                    if (h > 23 || m > 59) return null; // guards against garbage
                     return h * 60 + m;
                 }
-                const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-                if (match) {
-                    let h = parseInt(match[1]);
-                    const m = parseInt(match[2]);
-                    const meridiem = match[3].toUpperCase();
+
+                // H:MM AM/PM, only if explicitly marked
+                const matchAMPM = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+                if (matchAMPM) {
+                    let h = parseInt(matchAMPM[1]);
+                    const m = parseInt(matchAMPM[2]);
+                    const meridiem = matchAMPM[3].toUpperCase();
                     if (meridiem === 'PM' && h !== 12) h += 12;
                     if (meridiem === 'AM' && h === 12) h = 0;
                     return h * 60 + m;
                 }
-                const plain = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-                if (plain) return parseInt(plain[1]) * 60 + parseInt(plain[2]);
-                return null;
+
+                return null; // unrecognized format — don't guess
             }
 
             function extractTimeFromDatetime(datetimeVal) {
                 if (!datetimeVal) return null;
-                const str = (datetimeVal instanceof Date)
-                    ? datetimeVal.toISOString().replace('T', ' ')
-                    : String(datetimeVal);
-                const match = str.match(/(\d{2}:\d{2}:\d{2})/);
-                return match ? match[1] : null;
+                const date = (datetimeVal instanceof Date)
+                    ? datetimeVal
+                    : new Date(String(datetimeVal).replace(' ', 'T'));
+
+                return date.toLocaleTimeString('en-GB', {
+                    timeZone: 'Asia/Manila',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }); // returns "HH:MM:SS" in PH time
             }
 
             function formatTime12h(datetimeVal) {
@@ -783,29 +795,30 @@ app.get('/api/dtr/:empcode', (req, res) => {
             // STEP 2: Now fetch the DTR sessions
             db.query(
                 `SELECT
-                    DATE(checkin_time)           AS session_date,
-                    MIN(checkin_time)            AS first_checkin,
-                    MAX(checkout_time)           AS last_checkout,
-                    SUM(COALESCE(work_hrs, 0))   AS total_work_hrs,
-                    GROUP_CONCAT(status)         AS statuses
+                    session_date,
+                    checkin_time,
+                    checkout_time,
+                    COALESCE(work_hrs, 0) AS work_hrs,
+                    status
                  FROM dtr_sessions
                  WHERE emp_code = ?
-                 GROUP BY DATE(checkin_time)
-                 ORDER BY DATE(checkin_time) DESC`,
+                 ORDER BY checkin_time DESC`,
                 [empcode],
                 (err, sessions) => {
                     if (err) return res.status(500).json({ error: err.sqlMessage });
 
                     const shiftLoginMins  = parseTimeToMinutes(emp.SHIFT_LOGIN);
                     const shiftLogoutMins = parseTimeToMinutes(emp.SHIFT_LOGOUT);
+                    console.log('SHIFT_LOGOUT raw:', emp.SHIFT_LOGOUT, 'parsed mins:', shiftLogoutMins);
 
                     const rows = sessions.map(s => {
                         const rawDate = (s.session_date instanceof Date)
                             ? s.session_date.toISOString().slice(0, 10)
                             : String(s.session_date).slice(0, 10);
 
-                        const checkinMins  = parseTimeToMinutes(extractTimeFromDatetime(s.first_checkin));
-                        const checkoutMins = parseTimeToMinutes(extractTimeFromDatetime(s.last_checkout));
+                        const checkinMins  = parseTimeToMinutes(extractTimeFromDatetime(s.checkin_time));
+                        const checkoutMins = parseTimeToMinutes(extractTimeFromDatetime(s.checkout_time));
+                        console.log('checkout raw:', s.checkout_time, 'extracted:', extractTimeFromDatetime(s.checkout_time), 'parsed mins:', checkoutMins);
 
                         const lateMins = (checkinMins !== null && shiftLoginMins !== null)
                             ? Math.max(0, checkinMins - shiftLoginMins) : 0;
@@ -818,12 +831,12 @@ app.get('/api/dtr/:empcode', (req, res) => {
                             SHIFT_SCHED: emp.SHIFT_LOGIN && emp.SHIFT_LOGOUT
                                              ? `${emp.SHIFT_LOGIN} – ${emp.SHIFT_LOGOUT}`
                                              : '—',
-                            TIME_IN:     formatTime12h(s.first_checkin)  || '—',
-                            TIME_OUT:    formatTime12h(s.last_checkout)  || 'Open',
-                            WORKHRS:     parseFloat(s.total_work_hrs).toFixed(2),
+                            TIME_IN:     formatTime12h(s.checkin_time)  || '—',
+                            TIME_OUT:    formatTime12h(s.checkout_time) || 'Open',
+                            WORKHRS:     parseFloat(s.work_hrs).toFixed(2),
                             NLATE:       lateMins,
                             NREGOT:      otMins,
-                            REMARKS:     s.statuses
+                            REMARKS:     s.status
                         };
                     });
 
